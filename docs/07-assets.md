@@ -47,7 +47,7 @@ So the project needs both:
 
 ## Pre-made models (`apps/web/public/assets/*.glb`)
 
-The `.glb` files are the source of truth; no source art is kept in the repo. They can come from anywhere (made or tweaked in Blender, free CC0 packs, AI-drafted and cleaned up) as long as they follow the style rules below and their licence allows use in the game. Record each third-party model's source and licence in `apps/web/public/assets/CREDITS.md`.
+The `.glb` files are the source of truth; no source art is kept in the repo. They can come from anywhere (made or tweaked in Blender, free CC0 packs, AI-drafted and cleaned up) as long as they follow the style rules below and their licence allows use in the game. Every model gets an entry in the asset catalog (below), including its source and licence.
 
 Starter kit, about 30 pieces:
 
@@ -112,6 +112,19 @@ Starter kit, about 30 pieces:
 
 MVP subset: about 5 trees and a few props. Buildings are plain boxes plus a name sign.
 
+## Asset catalog: assets are data, not code
+
+`apps/web/public/assets/catalog.json` lists every model with an ID, file, category, attributes (e.g. `leafType`, `genus`, `size`, `heightM`, `climate`, `style`), footprint, collider, triangle count, source and licence. Types are in [03-architecture.md](03-architecture.md).
+
+- **Decisions ask, the catalog answers.** Decision code (and AI, later) outputs requirements, e.g. category `tree` + `leafType: needleleaved`. The selector in `packages/world/src/assets` filters the catalog and picks one with the seeded RNG. Code never names a file.
+- **More assets = more variety, no code changes.** Adding a model means adding a file and a catalog entry.
+- **Stable worlds.** Asset IDs are never renamed or deleted (mark them `deprecated`). The catalog has a `version`, and a world or room uses one version for everyone, so new assets don't change existing worlds or split multiplayer views.
+- **Load only what's used.** A tile's placements list asset IDs; the browser loads just those and caches them. When the kit grows large, models move to object storage + CDN with versioned URLs, compressed (Draco/meshopt, KTX2) and with LOD versions.
+- **Variety budget.** Each distinct model costs draw calls, so cap the number of different models per tile (e.g. 8 tree types, 20 prop types) and keep the shared palette material.
+- **Automatic checks.** Before the kit grows past the starter set, add an asset-check script (run in CI) that compares each `.glb` with its catalog entry: scale, origin, +Z facing, triangle budget, palette, licence.
+
+MVP: a small catalog (about 5 trees, a few props, a blank shop sign) and the selector from day one.
+
 ## Placement: code decides where pre-made items go
 
 - **Kit pieces onto wall sections**, chosen using the facade and court profiles.
@@ -130,7 +143,7 @@ MVP subset: about 5 trees and a few props. Buildings are plain boxes plus a name
 - **Real scale:** 1 unit = 1 metre; origin at the base centre; all assets face +Z (the glTF default).
 - **Reference sizes:** lane 3.5 m, curb 0.15 m, door 2.1 m, one storey 3 m, eye height 1.7 m.
 - **Collision:** each asset has a simple matching shape (box or cylinder) for physics.
-- **Naming:** `tree_leafy_m.glb`, `prop_hydrant.glb`, `kit_storefront_bay.glb`, `kit_wall_plain.glb`.
+- **Naming:** files like `tree_leafy_m.glb`, `prop_hydrant.glb`, `kit_storefront_bay.glb`; catalog IDs lowercase and dotted, like `tree.leafy.oak.m`.
 - **Format:** `.glb` (glTF binary). It loads directly in Three.js and imports into any other engine later.
 - **Ground materials (generated surfaces):**
   - asphalt, concrete, paving stones, grass, sand, water, glass

@@ -51,12 +51,13 @@
 
 ## Assets
 
-| Thing                                             | When                                     |
-| ------------------------------------------------- | ---------------------------------------- |
-| Blender (+ Blender MCP), or ready-made CC0 models | Optional, for making or tweaking the kit |
-| `.glb` models                                     | MVP                                      |
-| Shared palette texture                            | MVP                                      |
-| Style kits (suburban, estate, plaza, ...)         | Later                                    |
+| Thing                                                           | When                                     |
+| --------------------------------------------------------------- | ---------------------------------------- |
+| Blender (+ Blender MCP), or ready-made CC0 models               | Optional, for making or tweaking the kit |
+| `.glb` models                                                   | MVP                                      |
+| Asset catalog (`catalog.json`) + selector in `@somewhere/world` | MVP                                      |
+| Shared palette texture                                          | MVP                                      |
+| Style kits (suburban, estate, plaza, ...)                       | Later                                    |
 
 ## AI (later, never required to build a world)
 

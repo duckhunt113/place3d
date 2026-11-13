@@ -102,7 +102,7 @@ Where each detail comes from:
 
 1. Run it once per feature, ahead of time, never while a player waits.
 2. Save every result by OSM ID; reuse it forever.
-3. Force a strict output format; reject nonsense (allowed colours, sane bay counts).
+3. Force a strict output format; reject nonsense (allowed colours, sane bay counts). When AI chooses assets, it may only return asset requests or IDs that exist in the asset catalog (see [07-assets.md](07-assets.md)); anything else is rejected.
 4. OSM tags beat AI guesses.
 5. Always have a non-AI fallback.
 6. Watch cost: pay once per feature, start with storefronts and plazas.

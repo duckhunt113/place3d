@@ -12,13 +12,14 @@ somewhere/
       src/render/        the ONLY place that imports three.js
       src/physics/       Rapier world + colliders from generator data
       src/player/        first-person camera, controls, player capsule
-      public/assets/     .glb asset kit + CREDITS.md
+      public/assets/     .glb asset kit + catalog.json
     server/              (later) Colyseus rooms + server-side fetch, decisions, tile storage
   packages/
     world/               plain TypeScript, NO three.js, NO DOM
       src/data/          tile sources (saved files, Overpass), tiling, lat/lon -> metres, cache interface
       src/decide/        tag rules + defaults (later: trained model, LLM)
       src/generator/     roads, ground, buildings -> plain mesh data + placements
+      src/assets/        asset catalog types + selector
       src/util/          seeded random, maths helpers
   docs/                  these docs
 ```
@@ -87,7 +88,7 @@ type Decision = {
 };
 
 type Placement = {
-  asset: string;
+  asset: AssetId; // from the catalog, never a file name
   pos: [number, number, number]; // local metres
   rotY: number;
   scale: number;
@@ -102,6 +103,34 @@ type MeshData = {
   colors?: Float32Array; // vertex colours (rgb), e.g. foliage shading
   indices: Uint32Array;
 };
+
+// Asset catalog (apps/web/public/assets/catalog.json). Assets are data, not code:
+// decisions ask for requirements; the selector picks an ID.
+type AssetId = string; // stable, e.g. "tree.leafy.oak.m"; never renamed or deleted
+type AssetEntry = {
+  id: AssetId;
+  file: string; // relative to the assets folder, e.g. "nature/tree_oak_m.glb"
+  category: string; // "tree", "bush", "prop.hydrant", "sign.shop", ...
+  attributes: Record<string, string | number>; // leafType, genus, size, heightM, climate, style, ...
+  default?: boolean; // the category's fallback when nothing else matches
+  footprintM: [number, number];
+  collider:
+    | { type: "box"; size: [number, number, number] }
+    | { type: "cylinder"; radius: number; height: number };
+  triangles: number;
+  source: string;
+  licence: string; // CC0 preferred
+  deprecated?: boolean; // kept so old worlds still resolve; never picked for new choices
+};
+type AssetCatalog = { version: number; assets: AssetEntry[] };
+
+// What decisions and AI ask for: requirements, never a file.
+type AssetRequest = { category: string; want?: Record<string, string | number> };
+
+// Selector (packages/world/src/assets): keep entries in the category that match every
+// `want` and aren't deprecated, sort by id, pick one with the seeded RNG
+// (seed = OSM id or rounded global position). Nothing matches -> the category default.
+declare function selectAsset(catalog: AssetCatalog, req: AssetRequest, seed: string): AssetId;
 
 // Tile source: the ONLY way map data enters the pipeline.
 // Every source returns the same format and includes everything that

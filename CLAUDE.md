@@ -39,11 +39,12 @@ apps/web/            @somewhere/web: Vite + TypeScript + three + @dimforge/rapie
   src/render/        the ONLY place allowed to import three
   src/physics/       Rapier world + colliders built from generator data
   src/player/        first-person controls, camera, player capsule
-  public/assets/     .glb asset kit + CREDITS.md
+  public/assets/     .glb asset kit + catalog.json (the asset catalog)
 packages/world/      @somewhere/world: plain TypeScript, engine-free
   src/data/          tile sources (saved files, Overpass), tiling, lat/lon -> metres, cache interface (no storage code)
   src/decide/        tags > rules > defaults
   src/generator/     roads, ground, buildings -> plain mesh data + placements + colliders
+  src/assets/        asset catalog types + selector (requirements -> asset ID)
   src/util/          seeded RNG, maths
 apps/server/         (later) Colyseus rooms + server-side fetch, decisions and tile storage
 docs/                design docs: read the relevant one before big changes
@@ -105,8 +106,10 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
     - `.glb`, one shared palette texture; follow the `art-style` skill (faceted foliage, smooth everything else)
     - origin at base centre, facing +Z (glTF default), 1 unit = 1 m
     - `.glb` files in `apps/web/public/assets/` are the source of truth; no source art (`.blend` etc.) in the repo
-    - only use third-party models with a licence that allows use in the game (CC0 preferred), and record source + licence for each in `apps/web/public/assets/CREDITS.md`
-    - names like `tree_leafy_m.glb`, `prop_hydrant.glb`, `kit_storefront_bay.glb`.
+    - only use third-party models with a licence that allows use in the game (CC0 preferred)
+    - file names like `tree_leafy_m.glb`, `prop_hydrant.glb`, `kit_storefront_bay.glb`
+    - **Asset catalog:** every `.glb` has one entry in `apps/web/public/assets/catalog.json` (ID, file, category, attributes, footprint, collider, triangles, source, licence). Generator, decision and AI code **never hard-code file names**: they ask for requirements (`AssetRequest`, e.g. category `tree`, `leafType: needleleaved`) and the selector in `packages/world/src/assets` picks a matching asset ID with the seeded RNG.
+    - **Asset IDs are stable** (lowercase, dotted, e.g. `tree.leafy.oak.m`): never rename or delete one; mark it `deprecated` instead. The catalog has a `version`; a world or room uses one catalog version for everyone, so adding assets never changes existing worlds.
 11. **Scalable by default.** Every design choice (library, data format, storage, API, architecture) must keep working as the project grows: many players, any location worldwide, the server running the same code, and the planned AI prompts, objectives and multiplayer, without a rewrite. Before choosing, ask: does this still work at 1,000× the players or data, for the whole world, and on the server? Shortcuts are fine for the MVP only if they sit behind an interface that can be swapped later, and the matching doc names the scalable replacement. "Scalable" means _can grow without a rewrite_, not _built for scale now_: don't add infrastructure before it's needed.
 
 ## Testing (Vitest)
