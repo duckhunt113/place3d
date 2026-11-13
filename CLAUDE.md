@@ -41,7 +41,6 @@ packages/world/      @somewhere/world: plain TypeScript, engine-free
   src/util/          seeded RNG, maths
 apps/server/         (later) Colyseus + tile generation
 docs/                design docs: read the relevant one before big changes
-assets/              source art (.blend, palette texture)
 ```
 
 ## Commands

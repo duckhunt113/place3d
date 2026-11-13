@@ -17,7 +17,6 @@ somewhere/
       src/generator/     roads, ground, buildings -> plain mesh data + placements
       src/util/          seeded random, maths helpers
   docs/                  these docs
-  assets/                source art (.blend files, palette texture)
 ```
 
 ## Layers
