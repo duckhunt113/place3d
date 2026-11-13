@@ -103,6 +103,7 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
     - `.glb` files in `apps/web/public/assets/` are the source of truth; no source art (`.blend` etc.) in the repo
     - only use third-party models with a licence that allows use in the game (CC0 preferred), and record source + licence for each in `apps/web/public/assets/CREDITS.md`
     - names like `tree_leafy_m.glb`, `prop_hydrant.glb`, `kit_storefront_bay.glb`.
+11. **Scalable by default.** Every design choice (library, data format, storage, API, architecture) must keep working as the project grows: many players, any location worldwide, the server running the same code, and the planned AI prompts, objectives and multiplayer, without a rewrite. Before choosing, ask: does this still work at 1,000× the players or data, for the whole world, and on the server? Shortcuts are fine for the MVP only if they sit behind an interface that can be swapped later, and the matching doc names the scalable replacement. "Scalable" means _can grow without a rewrite_, not _built for scale now_: don't add infrastructure before it's needed.
 
 ## Testing (Vitest)
 
@@ -119,6 +120,12 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
 ## Working style
 
 - TypeScript `strict`. Keep modules small and data-oriented; put types for world data in `packages/world`.
+- **Approved libraries for these jobs** (use them; don't hand-roll or add alternatives without recording the reason here):
+  - `earcut` (world): triangulate outlines (buildings, lawns, parking lots)
+  - `polygon-clipping` (world): clip shapes at tile edges, unions/intersections, overlap checks
+  - `comlink` (web): call the world Web Worker like normal async functions
+  - `idb-keyval` (web): IndexedDB storage behind the tile cache
+- **New dependencies:** must suit their package (in `packages/world`: no DOM, three.js or Rapier) and pass hard rule 11; add them to `docs/10-tech-stack.md` in the same change.
 - **Biome** is the only linter and formatter (config in `biome.json`: 2 spaces, double quotes, semicolons, 100-char lines). Don't add ESLint or Prettier. Run `pnpm fix` before committing; don't silence a lint rule without a short comment saying why (`// biome-ignore lint/<rule>: <reason>`).
 - **New conventions go in the rules.** When we adopt a new convention (naming, folder layout, tooling, workflow), add it to this file in the same change, and update the matching doc in `docs/`.
 - Keep the docs in `docs/` in sync when a design decision changes.

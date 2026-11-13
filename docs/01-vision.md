@@ -61,3 +61,4 @@ Checked in November 2026:
 3. Recognisable beats exact. Stylized beats photoreal.
 4. Ship small: MVP first, then add layers without rewrites.
 5. Respect data licences, privacy and kids' safety from day one.
+6. Scalable by default: every choice must grow to more players, the whole world and the planned AI and multiplayer features without a rewrite (see hard rule 11 in `CLAUDE.md`).

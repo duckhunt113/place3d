@@ -15,11 +15,15 @@
 
 ## Libraries
 
-| Library                       | Where                             | When  |
-| ----------------------------- | --------------------------------- | ----- |
-| **three** (+ `@types/three`)  | `apps/web` only                   | MVP   |
-| **@dimforge/rapier3d-compat** | `apps/web` (and the server later) | MVP   |
-| **Colyseus**                  | Multiplayer rooms and sync        | Later |
+| Library                       | Where                                                           | When  |
+| ----------------------------- | --------------------------------------------------------------- | ----- |
+| **three** (+ `@types/three`)  | `apps/web` only                                                 | MVP   |
+| **@dimforge/rapier3d-compat** | `apps/web` (and the server later)                               | MVP   |
+| **Colyseus**                  | Multiplayer rooms and sync                                      | Later |
+| **earcut**                    | `packages/world`: triangulate outlines (buildings, lawns, lots) | MVP   |
+| **polygon-clipping**          | `packages/world`: clip shapes at tile edges, overlap checks     | MVP   |
+| **comlink**                   | `apps/web`: call the world Web Worker like normal functions     | MVP   |
+| **idb-keyval**                | `apps/web`: IndexedDB storage for the tile cache                | MVP   |
 
 ## Data
 
