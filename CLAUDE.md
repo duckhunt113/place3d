@@ -9,7 +9,7 @@ Somewhere is a web app. You enter coordinates and a radius, and the real area in
 These are in scope (see `docs/02-mvp.md`):
 
 - single player, first person, a fixed 300 m radius, flat ground
-- OSM data from Overpass, with a tile cache
+- OSM data through a tile source (saved Albertson Crescent tiles first, then live Overpass), with a tile cache
 - decisions from tags, rules and defaults
 - generated roads, curbs, sidewalks, lawns, parks, water, and parking lots with stall lines
 - box buildings: flat roofs, gabled roofs on small houses only if easy, colour by type, plain name signs on shops
@@ -41,7 +41,7 @@ apps/web/            @somewhere/web: Vite + TypeScript + three + @dimforge/rapie
   src/player/        first-person controls, camera, player capsule
   public/assets/     .glb asset kit + CREDITS.md
 packages/world/      @somewhere/world: plain TypeScript, engine-free
-  src/data/          Overpass fetch, tiling, lat/lon -> metres, cache interface (no storage code)
+  src/data/          tile sources (saved files, Overpass), tiling, lat/lon -> metres, cache interface (no storage code)
   src/decide/        tags > rules > defaults
   src/generator/     roads, ground, buildings -> plain mesh data + placements + colliders
   src/util/          seeded RNG, maths
@@ -81,6 +81,9 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
    - Lines are clipped at tile edges.
    - Decisions are stored by OSM ID, never per tile.
    - Saved tiles carry a `version` and a timestamp.
+   - **Map data only comes through the `TileSource` interface** (`packages/world/src/data`). `getTile(id)` returns that tile's OSM elements in one normalized format (Overpass `out geom` JSON), including everything that _touches_ the tile, not only what lies inside, plus the source name and fetch time. Nothing else calls Overpass or any other map service.
+   - **Sources by phase:** saved files (MVP step 1; the same files are the test fixtures) → live Overpass (any location, during development) → pre-built tiles in object storage behind a CDN (launch). Don't self-host Overpass.
+   - Everyone in a room gets tiles from the same source and version.
 5. **Decision order:** OSM tag > rules > (later: trained model > LLM) > safe default. OSM tags always win.
 6. **If the shape comes from the map, generate it. If it's the same everywhere, use a pre-made `.glb` asset.** AI (later) only describes things as parameters; code always builds the geometry.
 7. **Performance budgets:**
@@ -110,7 +113,7 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
 - **Where:** put tests next to the code they test, named `<file>.test.ts` (e.g. `src/util/rng.ts` → `src/util/rng.test.ts`). No separate `test/` folders.
 - **What must have tests:** every module in `packages/world` (projection, tiling, clipping, decisions, generators, seeded RNG). Rendering, player controls and visuals in `apps/web` are checked by eye; test only plain logic there (e.g. parsing a Google Maps link).
 - **Determinism:** generators get a test that runs the same input twice and expects identical output (`toEqual`). Never use `Math.random()`, `Date.now()` or the real clock in code under test; pass seeds and timestamps in.
-- **No network:** tests never call Overpass or any other service. Use saved responses in a `fixtures/` folder next to the code (e.g. `src/data/fixtures/albertson.json`), and keep fixtures small (one tile).
+- **No network:** tests never call Overpass or any other service. Use saved tiles in a `fixtures/` folder next to the code (e.g. `src/data/fixtures/`), in the same format the saved-file tile source reads, and keep them small (one tile per file).
 - **Bugs:** every bug fix adds a test that fails without the fix.
 - **Assertions:** check real values with tolerances where maths is involved (`toBeCloseTo`), not just "is defined" or "doesn't throw".
 - **Speed:** the whole suite should run in a few seconds; no sleeps or timers.

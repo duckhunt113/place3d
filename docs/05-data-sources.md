@@ -35,12 +35,13 @@ Tags we care about most:
 
 ### How to get it
 
-| Method                                         | Use                                                                     |
-| ---------------------------------------------- | ----------------------------------------------------------------------- |
-| **Overpass API**                               | Query one area live: "everything within 300 m of here". Use for the MVP |
-| **Geofabrik extracts** (download.geofabrik.de) | Download a region (Ontario, Canada) and self-host. Use at launch        |
-| **planet.openstreetmap.org**                   | The whole world, about 80 GB compressed, updated weekly                 |
-| **Vector tiles**                               | Pre-cut tiles for fast loading (how Streets GL and Hop.Earth load fast) |
+| Method                                         | Use                                                                                                              |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **Saved tiles**                                | A few tiles fetched once and kept in the repo. MVP step 1 and test fixtures                                      |
+| **Overpass API**                               | Query one tile live. Use during development for any location                                                     |
+| **Geofabrik extracts** (download.geofabrik.de) | Download a region (Ontario, Canada) and cut it into our own pre-built tiles. Use at launch                       |
+| **planet.openstreetmap.org**                   | The whole world, about 80 GB compressed, updated weekly                                                          |
+| **Third-party vector tiles**                   | Pre-cut tiles for 2D maps (OpenFreeMap, Protomaps). Not used: they drop tags we need (shop names, levels, roofs) |
 
 ### Overpass fair use (public instances)
 
@@ -48,7 +49,15 @@ Tags we care about most:
 - Anything that runs regularly: **divide by 100**, so under about 100 queries and 10 MB/day.
 - Limits count per **application**: all your users added together.
 - Send a `User-Agent` / `Referer` that identifies the app.
-- The public servers are volunteer-run and sometimes slow or down. Fine for development; at launch, cache everything and self-host.
+- The public servers are volunteer-run and sometimes slow or down. Fine for development; at launch, switch to pre-built tiles.
+
+### Plan by phase
+
+1. **MVP step 1:** saved Albertson Crescent tiles. No network needed; the same files are the test fixtures.
+2. **Development:** live Overpass for any other location, per zoom-17 tile, through the same `TileSource` interface.
+3. **Launch:** pre-built tiles. A script cuts a Geofabrik extract into our zoom-17 tile format (keeping every tag we need), stored as files or PMTiles in object storage (e.g. Cloudflare R2) behind a CDN, rebuilt regularly; tiles nobody has visited are built the first time they're requested. Paths are versioned (`tiles/v1/…`) so a format change can roll out without breaking old clients.
+
+We don't self-host Overpass: our game only ever asks "what's in tile X?", and static files answer that faster, cheaper and more reliably.
 
 ### Reliability
 

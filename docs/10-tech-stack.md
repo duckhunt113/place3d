@@ -27,15 +27,15 @@
 
 ## Data
 
-| Source                                                                                       | When      |
-| -------------------------------------------------------------------------------------------- | --------- |
-| OpenStreetMap via Overpass API                                                               | MVP       |
-| Tile cache: interface in `@somewhere/world`, IndexedDB in the browser (server storage later) | MVP       |
-| Elevation tiles                                                                              | Later     |
-| Mapillary (+ Mapilio / KartaView / Panoramax)                                                | Later     |
-| Licensed aerial imagery, city tree data, LiDAR                                               | Later     |
-| Open-Meteo weather                                                                           | Optional  |
-| Geofabrik extracts / self-hosted Overpass (Docker)                                           | At launch |
+| Source                                                                                                    | When      |
+| --------------------------------------------------------------------------------------------------------- | --------- |
+| Saved tiles (Albertson Crescent), then OpenStreetMap via Overpass API, through the `TileSource` interface | MVP       |
+| Tile cache: interface in `@somewhere/world`, IndexedDB in the browser (server storage later)              | MVP       |
+| Elevation tiles                                                                                           | Later     |
+| Mapillary (+ Mapilio / KartaView / Panoramax)                                                             | Later     |
+| Licensed aerial imagery, city tree data, LiDAR                                                            | Later     |
+| Open-Meteo weather                                                                                        | Optional  |
+| Pre-built tiles from Geofabrik extracts, in object storage (e.g. Cloudflare R2) + CDN                     | At launch |
 
 ## World building
 
@@ -69,12 +69,12 @@
 
 ## Hosting (later)
 
-| Thing              | Options                                        |
-| ------------------ | ---------------------------------------------- |
-| Web app (static)   | Vercel, Netlify, Render                        |
-| Game + tile server | Node on Render or similar                      |
-| Storage / database | Tiles, shared decisions table, profiles        |
-| Docker             | Self-hosted Overpass, tile server, game server |
+| Thing              | Options                                 |
+| ------------------ | --------------------------------------- |
+| Web app (static)   | Vercel, Netlify, Render                 |
+| Game + tile server | Node on Render or similar               |
+| Storage / database | Tiles, shared decisions table, profiles |
+| Docker             | Tile build script, game server          |
 
 ## Package manager alternatives (for reference)
 

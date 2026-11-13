@@ -15,6 +15,8 @@ Input: **coordinates + radius**
 
 **2. Fetch data (per missing tile)**
 
+All map data comes through the `TileSource` interface (see [03-architecture.md](03-architecture.md)): saved files in MVP step 1, live Overpass during development, pre-built tiles from storage at launch. The rest of the pipeline never knows which one answered.
+
 - OSM: roads, buildings, shops, areas, trees, poles, fences, courts.
 - Elevation tiles for terrain height (later).
 - Mapillary photos facing buildings, plus detected signs and poles (later).

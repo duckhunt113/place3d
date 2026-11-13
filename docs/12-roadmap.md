@@ -48,7 +48,7 @@ Coordinates in, a 300 m stylized area out, walking around it in first person. Ta
 
 ## Launch readiness (in parallel from v0.3)
 
-- Self-hosted OSM (Geofabrik extract + own Overpass in Docker).
+- Pre-built tiles: a script cuts Geofabrik extracts into our tile format; stored in object storage behind a CDN, rebuilt regularly, missing tiles built on first request.
 - Hosting: static web app plus game/tile server plus storage.
 - Attribution screen (OSM, Mapillary, others).
 - Mobile controls.

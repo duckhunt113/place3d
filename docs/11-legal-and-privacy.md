@@ -7,7 +7,7 @@ _Practical notes from planning, not legal advice. Check the licences yourself be
 - Free to use, including commercially.
 - **Attribution required:** show "© OpenStreetMap contributors" in the app.
 - If you modify the _data itself_ and share it, those changes must be shared under the same licence. Your code and 3D models stay yours.
-- Respect Overpass fair use (see [05-data-sources.md](05-data-sources.md)); self-host at scale.
+- Respect Overpass fair use (see [05-data-sources.md](05-data-sources.md)); switch to our own pre-built tiles at scale.
 
 ## Mapillary (CC BY-SA 4.0)
 

@@ -16,7 +16,7 @@ somewhere/
     server/              (later) Colyseus rooms + server-side fetch, decisions, tile storage
   packages/
     world/               plain TypeScript, NO three.js, NO DOM
-      src/data/          Overpass fetch, tiling, lat/lon -> metres, cache interface
+      src/data/          tile sources (saved files, Overpass), tiling, lat/lon -> metres, cache interface
       src/decide/        tag rules + defaults (later: trained model, LLM)
       src/generator/     roads, ground, buildings -> plain mesh data + placements
       src/util/          seeded random, maths helpers
@@ -100,6 +100,34 @@ type WorldTile = {
 };
 // Meshes, placements and colliders are generated from features + decisions
 // each time a tile loads. They are never stored.
+
+// Tile source: the ONLY way map data enters the pipeline.
+// Every source returns the same normalized format and includes everything
+// that touches the tile (roads crossing the edge, buildings sticking out).
+type OsmElement = {
+  // Overpass `out geom` JSON shape
+  type: "node" | "way" | "relation";
+  id: number;
+  tags?: Record<string, string>;
+  lat?: number;
+  lon?: number; // nodes
+  geometry?: { lat: number; lon: number }[]; // ways
+  members?: {
+    type: string;
+    ref: number;
+    role: string;
+    geometry?: { lat: number; lon: number }[];
+  }[];
+};
+type TileData = { id: TileId; source: string; fetchedAt: string; elements: OsmElement[] };
+
+interface TileSource {
+  getTile(id: TileId): Promise<TileData>;
+}
+// Implementations, by phase:
+//   FileTileSource      saved tiles (MVP step 1, and test fixtures)
+//   OverpassTileSource  live public Overpass (development, any location)
+//   PrebuiltTileSource  our pre-built tiles from object storage + CDN (launch)
 
 // Cache interface: defined here, implemented per platform
 // (IndexedDB in apps/web/src/cache, files/database in apps/server later).
