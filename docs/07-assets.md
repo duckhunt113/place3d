@@ -3,38 +3,45 @@
 **Rule:** if the shape comes from the map, generate it in code. If it's the same object everywhere, use a pre-made `.glb` model and reuse it everywhere.
 
 So the project needs both:
+
 - a **generator** that builds map-shaped models on the fly
 - a **pre-made kit** that placement code drops into the world.
 
 ## Generated in code (`packages/world/src/generator`)
 
 **Ground**
+
 - Terrain from elevation (later).
 - Lawns, parks, fields, forest floor, sand, water: filled to their real outlines.
 
 **Roads and paths**
+
 - Roads following the real lines and curves; width from tags or road type.
 - Intersections. One of the hard parts; it needs clean joins.
 - Curbs (raised edges, about 15 cm), sidewalks, footpaths, driveways (each house connected to the road).
 - Road paint by road type: centre lines, edge lines, crosswalks, stop lines.
 
 **Buildings (the shell)**
+
 - Walls raised from the real footprint to the tagged or default height.
 - Roofs fitted to the footprint: flat, gabled, hipped, pyramidal. Complex footprints need a straight-skeleton algorithm, another hard part.
 - Wall sections 3–4 m wide, ready for kit pieces. Fitting pieces to odd wall lengths and angles is the third hard part.
 - Storey bands.
 
 **Areas with markings**
+
 - Parking lot surfaces with painted stalls.
 - Court and field surfaces with real colours and lines (basketball, tennis, soccer).
 - Playground ground surfaces.
 
 **Lines**
+
 - Fences, walls, hedges and guardrails along mapped lines.
 - Power wires (sagging curves) between poles.
 - Railways, bridges.
 
 **Text and colour**
+
 - Shop names drawn onto blank sign boards; street names onto blank street signs.
 - Profile colours applied to kit pieces.
 
@@ -45,6 +52,7 @@ The `.glb` files are the source of truth; no source art is kept in the repo. The
 Starter kit, about 30 pieces:
 
 **Nature (8)**
+
 - Leafy tree in S, M and L
 - Pine/conifer
 - Birch
@@ -54,6 +62,7 @@ Starter kit, about 30 pieces:
 - Rock cluster
 
 **Street furniture (8)**
+
 - Utility pole (plus a transformer/crossarm version)
 - Street light (arm style, plus a pole-mounted version)
 - Stop sign
@@ -64,6 +73,7 @@ Starter kit, about 30 pieces:
 - Trash/recycling bin
 
 **Building kit (12)** — 3 m × 3 m wall pieces so they tile:
+
 - Plain wall
 - House window
 - Front door, garage door
@@ -76,20 +86,24 @@ Starter kit, about 30 pieces:
 - Rooftop AC unit
 
 **Ground details (3)**
+
 - Grass tuft
 - Fence sections (wood, chain-link)
 - Bollard / curb stop
 
 **Sports and park**
+
 - Basketball hoop, tennis net, soccer goal, baseball backstop
 - Slide, swings, climber
 - Picnic table
 
 **Player**
+
 - A player avatar with animations: walk, run, jump, idle.
 - The first-person MVP can skip it. It's needed once friends can see each other.
 
 **Later**
+
 - Cars (optional; the data never includes cars, so they're a rule choice)
 - Landmarks
 - Seasonal variants (bare trees, snow)

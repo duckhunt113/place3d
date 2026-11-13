@@ -37,13 +37,13 @@ Enter coordinates → a 300 m area appears in our stylized look → you can walk
 
 ## Build order
 
-| Step | Result | Rough time |
-|---|---|---|
-| 1 | Projection + tile grid; fetch Overpass data per zoom-17 tile; coordinates in → plain grey roads and building boxes appear | 2–3 days |
-| 2 | Style pass: colours, roofs, grass, trees, sky, shadows | 2–3 days |
-| 3 | First-person controls + Rapier physics | 1–2 days |
-| 4 | Shop name signs, parking lines, sidewalks | 1–2 days |
-| 5 | Saved tile cache (IndexedDB), so revisited areas load instantly | 1 day |
+| Step | Result                                                                                                                    | Rough time |
+| ---- | ------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1    | Projection + tile grid; fetch Overpass data per zoom-17 tile; coordinates in → plain grey roads and building boxes appear | 2–3 days   |
+| 2    | Style pass: colours, roofs, grass, trees, sky, shadows                                                                    | 2–3 days   |
+| 3    | First-person controls + Rapier physics                                                                                    | 1–2 days   |
+| 4    | Shop name signs, parking lines, sidewalks                                                                                 | 1–2 days   |
+| 5    | Saved tile cache (IndexedDB), so revisited areas load instantly                                                           | 1 day      |
 
 Tip: step 1 can start with **no buildings at all** (roads + ground + walking) as a one-day stepping stone, then add boxes.
 

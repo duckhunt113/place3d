@@ -1,12 +1,12 @@
 # 11 — Legal, privacy and safety
 
-*Practical notes from planning, not legal advice. Check the licences yourself before launching, especially if the app will make money.*
+_Practical notes from planning, not legal advice. Check the licences yourself before launching, especially if the app will make money._
 
 ## OpenStreetMap (ODbL)
 
 - Free to use, including commercially.
 - **Attribution required:** show "© OpenStreetMap contributors" in the app.
-- If you modify the *data itself* and share it, those changes must be shared under the same licence. Your code and 3D models stay yours.
+- If you modify the _data itself_ and share it, those changes must be shared under the same licence. Your code and 3D models stay yours.
 - Respect Overpass fair use (see [05-data-sources.md](05-data-sources.md)); self-host at scale.
 
 ## Mapillary (CC BY-SA 4.0)
@@ -30,20 +30,21 @@ Draw **shop names in our own font and colours**. Don't copy real brand logos: th
 
 ## Private homes
 
-| Place type | Detail level |
-|---|---|
-| **Public places** (shops, plazas, parks, courts, schools, landmarks) | Full detail from photos |
-| **Private homes** | Right footprint, roof shape, general colour; the rest from a generic style kit |
+| Place type                                                           | Detail level                                                                   |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| **Public places** (shops, plazas, parks, courts, schools, landmarks) | Full detail from photos                                                        |
+| **Private homes**                                                    | Right footprint, roof shape, general colour; the rest from a generic style kit |
 
 Don't replicate specific private homes' detailed look (gates, entrances, security features) from photos.
 
 ## Kids' safety
 
 The style is kid-friendly, so:
+
 - Filter anything players type (restyle prompts, chat) and anything AI says.
 - When multiplayer arrives: friends-only rooms by default, reporting, no exact personal locations shown.
 - Be careful with features that reveal where a player lives. Entering your own address is a private choice; don't broadcast it to other players.
 
 ## Missing-data additions
 
-Keep your own game-layer additions separate from OSM data. Contributions *to* OSM follow OSM's contributor terms.
+Keep your own game-layer additions separate from OSM data. Contributions _to_ OSM follow OSM's contributor terms.

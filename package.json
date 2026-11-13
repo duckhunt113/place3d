@@ -9,6 +9,11 @@
     "dev": "pnpm --filter @somewhere/web dev",
     "build": "pnpm --filter @somewhere/web build",
     "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "lint": "biome check .",
+    "fix": "biome check --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.7"
   }
 }

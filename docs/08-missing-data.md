@@ -4,7 +4,8 @@ Some things will never be in the data (example: a basketball court nobody mapped
 
 ## 1. Check it's really missing
 
-Many features *are* mapped; the generator just has to support the tag:
+Many features _are_ mapped; the generator just has to support the tag:
+
 - Courts and fields: `leisure=pitch` + `sport=basketball|tennis|soccer|baseball`. Generated surface with real-shape lines, plus hoop, net or goal kit pieces.
 - `leisure=playground`: filled with slide, swings and climber kit pieces.
 - Pools, tracks, skate parks: the same approach.
@@ -39,7 +40,7 @@ OSM  >  game-layer additions  >  imagery detections  >  generic filler
 
 ## Making it look like the real one
 
-Supporting the tag gives *a* basketball court. Making it look like *that* court needs a court profile from aerial and street photos (see [06-decisions-and-ai.md](06-decisions-and-ai.md)).
+Supporting the tag gives _a_ basketball court. Making it look like _that_ court needs a court profile from aerial and street photos (see [06-decisions-and-ai.md](06-decisions-and-ai.md)).
 
 ## MVP
 

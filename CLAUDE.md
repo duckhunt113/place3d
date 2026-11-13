@@ -7,6 +7,7 @@ Somewhere is a web app. You enter coordinates and a radius, and the real area in
 ## Current scope: MVP only
 
 These are in scope (see `docs/02-mvp.md`):
+
 - single player, first person, a fixed 300 m radius, flat ground
 - OSM data from Overpass, with a tile cache
 - decisions from tags, rules and defaults
@@ -16,6 +17,7 @@ These are in scope (see `docs/02-mvp.md`):
 - Rapier collisions, bright lighting, and the OSM credit on screen
 
 Do **not** add any of these unless asked:
+
 - multiplayer or an avatar
 - terrain
 - AI of any kind
@@ -54,6 +56,8 @@ pnpm install
 pnpm dev                                   # run the web app (http://localhost:5173)
 pnpm test                                  # Vitest in all packages
 pnpm typecheck                             # TypeScript checks, each package with its own settings
+pnpm lint                                  # Biome: lint + format check (no changes)
+pnpm fix                                   # Biome: auto-fix lint issues and format files
 pnpm build
 pnpm --filter @somewhere/web add <lib>
 pnpm --filter @somewhere/world add <lib>
@@ -110,11 +114,12 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
 - **Assertions:** check real values with tolerances where maths is involved (`toBeCloseTo`), not just "is defined" or "doesn't throw".
 - **Speed:** the whole suite should run in a few seconds; no sleeps or timers.
 - **Empty-suite flag:** `packages/world` runs Vitest with `--passWithNoTests` only until its first test exists; remove the flag in the same change that adds that test.
-- **Done means green:** before calling any change finished, run `pnpm typecheck && pnpm test` and fix any failure. Never delete, skip (`.skip`) or weaken a failing test to make it pass unless the behaviour was intentionally changed, and say so when you do.
+- **Done means green:** before calling any change finished, run `pnpm lint && pnpm typecheck && pnpm test` and fix any failure. Never delete, skip (`.skip`) or weaken a failing test to make it pass unless the behaviour was intentionally changed, and say so when you do.
 
 ## Working style
 
 - TypeScript `strict`. Keep modules small and data-oriented; put types for world data in `packages/world`.
+- **Biome** is the only linter and formatter (config in `biome.json`: 2 spaces, double quotes, semicolons, 100-char lines). Don't add ESLint or Prettier. Run `pnpm fix` before committing; don't silence a lint rule without a short comment saying why (`// biome-ignore lint/<rule>: <reason>`).
 - **New conventions go in the rules.** When we adopt a new convention (naming, folder layout, tooling, workflow), add it to this file in the same change, and update the matching doc in `docs/`.
 - Keep the docs in `docs/` in sync when a design decision changes.
 - Multiplayer (later) uses **Colyseus**.

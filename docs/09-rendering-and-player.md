@@ -10,12 +10,12 @@
   - Hop.Earth: OSM roads generated in real time on a WebGL/Three.js client
   - the official Three.js `games_fps` example.
 
-| Option | Good | Less good for us |
-|---|---|---|
-| **Three.js** (chosen) | Lightweight, flexible, huge community | We assemble physics and networking |
-| Babylon.js (runner-up) | More of a full engine: physics, editor, docs | Heavier, smaller community |
-| PlayCanvas | Web engine + editor + multiplayer examples | Editor-centric; awkward for fully generated worlds |
-| Unity / Godot web export | Full engines | Big downloads, slow to load, awkward to stream generated worlds |
+| Option                   | Good                                         | Less good for us                                                |
+| ------------------------ | -------------------------------------------- | --------------------------------------------------------------- |
+| **Three.js** (chosen)    | Lightweight, flexible, huge community        | We assemble physics and networking                              |
+| Babylon.js (runner-up)   | More of a full engine: physics, editor, docs | Heavier, smaller community                                      |
+| PlayCanvas               | Web engine + editor + multiplayer examples   | Editor-centric; awkward for fully generated worlds              |
+| Unity / Godot web export | Full engines                                 | Big downloads, slow to load, awkward to stream generated worlds |
 
 Switching later is cheap **only** if Three.js stays inside `apps/web/src/render` (see [03-architecture.md](03-architecture.md)).
 
@@ -33,6 +33,7 @@ The main cost is **draw calls**, not triangles.
 6. **Shadows**: one sun light; real-time shadows only near the player; ambient occlusion baked into vertex colours.
 
 Keep the rest light:
+
 - Generate tiles in a Web Worker so the game doesn't freeze.
 - Simple physics colliders, never the visual mesh.
 - Cap pixel ratio at 1.5–2.
@@ -40,12 +41,12 @@ Keep the rest light:
 
 Budget per frame:
 
-| Item | Target |
-|---|---|
-| Draw calls | under 200 desktop / 100 mobile |
-| Triangles on screen | under 1–2 M desktop / 300–500 k mobile |
-| Shadow-casting lights | 1 (the sun) |
-| Textures | 1–3 shared atlases |
+| Item                  | Target                                 |
+| --------------------- | -------------------------------------- |
+| Draw calls            | under 200 desktop / 100 mobile         |
+| Triangles on screen   | under 1–2 M desktop / 300–500 k mobile |
+| Shadow-casting lights | 1 (the sun)                            |
+| Textures              | 1–3 shared atlases                     |
 
 Add an FPS counter (Three.js `stats` addon) from day one, and test on a real phone early.
 
@@ -70,11 +71,11 @@ Bigger areas later: stream tiles as the player walks and unload those behind (Ho
 
 ## Physics colliders
 
-| Thing | Collider |
-|---|---|
-| Buildings | Box (or convex hull of the footprint, extruded) |
-| Trees | Cylinder around the trunk only, so you can walk under leaves |
-| Ground | Flat plane in the MVP; heightfield with terrain |
-| Props | Simple box or cylinder per asset |
+| Thing     | Collider                                                     |
+| --------- | ------------------------------------------------------------ |
+| Buildings | Box (or convex hull of the footprint, extruded)              |
+| Trees     | Cylinder around the trunk only, so you can walk under leaves |
+| Ground    | Flat plane in the MVP; heightfield with terrain              |
+| Props     | Simple box or cylinder per asset                             |
 
 Build colliders from the generator output (plain data), not from Three.js meshes.

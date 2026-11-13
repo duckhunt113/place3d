@@ -46,6 +46,7 @@ somewhere/
 A thin renderer in `apps/web/src/render` turns that into Three.js meshes and instanced meshes.
 
 Why:
+
 1. The same generator runs on the server later, for multiplayer.
 2. It's testable with Vitest without a browser.
 3. Swapping Three.js for Babylon.js or PlayCanvas later costs weeks, not a rewrite. Unity or Godot is bigger but still keeps the design and assets.
@@ -55,7 +56,7 @@ Why:
 ```ts
 // packages/world
 type LatLon = { lat: number; lon: number };
-type Vec2 = [number, number];               // local metres [x, z]: x east, z south (north is -z; y is up)
+type Vec2 = [number, number]; // local metres [x, z]: x east, z south (north is -z; y is up)
 type TileId = { z: 17; x: number; y: number }; // slippy-map tile, about 220 m in southern Ontario
 
 type Feature =
@@ -64,24 +65,37 @@ type Feature =
   | { kind: "area"; osmId: string; outline: Vec2[]; holes?: Vec2[][]; tags: Record<string, string> }
   | { kind: "point"; osmId: string; at: Vec2; tags: Record<string, string> };
 
-type Decision = {                           // stored by osmId in a shared table
+type Decision = {
+  // stored by osmId in a shared table
   osmId: string;
-  type: string;                             // "house", "retail", "court_basketball", ...
+  type: string; // "house", "retail", "court_basketball", ...
   storeys?: number;
   roof?: "flat" | "gabled" | "hipped" | "pyramidal";
-  front?: Vec2;                             // facing direction
+  front?: Vec2; // facing direction
   source: "osm" | "rule" | "model" | "llm" | "default";
 };
 
-type Placement = { asset: string; pos: [number, number, number]; rotY: number; scale: number; tint?: string };
+type Placement = {
+  asset: string;
+  pos: [number, number, number];
+  rotY: number;
+  scale: number;
+  tint?: string;
+};
 
-type MeshData = { material: string; positions: Float32Array; normals: Float32Array; uvs: Float32Array; indices: Uint32Array };
+type MeshData = {
+  material: string;
+  positions: Float32Array;
+  normals: Float32Array;
+  uvs: Float32Array;
+  indices: Uint32Array;
+};
 
 type WorldTile = {
   id: TileId;
-  version: number;                          // bump when the generator changes
+  version: number; // bump when the generator changes
   generatedAt: string;
-  features: Feature[];                      // stored with lat/lon coordinates; projected to local Vec2 when generating
+  features: Feature[]; // stored with lat/lon coordinates; projected to local Vec2 when generating
   decisions: Decision[];
 };
 // Meshes, placements and colliders are generated from features + decisions

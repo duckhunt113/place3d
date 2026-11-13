@@ -1,4 +1,5 @@
 ---
+
 name: art-style
 description: Use for anything visual in Somewhere - making or editing .glb assets, choosing colours or materials for generated roads, ground and buildings, setting up lighting, sky, shadows or fog, styling trees, signs or props, or checking whether a screenshot matches the target look.
 ---
@@ -19,10 +20,10 @@ Sunny, clean, cheerful **stylized realism**: chunky faceted low-poly trees, smoo
 
 This is the most important rule. Get it wrong and the style falls apart.
 
-| Kind | What | How it looks |
-|---|---|---|
-| **Faceted** | Tree canopies, bushes, hedges, clouds | Clearly low-poly: flat-shaded facets, chunky clustered blobs, 2–3 green tones per canopy |
-| **Smooth** | Everything else: buildings, roofs, roads, curbs, sidewalks, poles, signs, props | Simple clean shapes with smooth shading, small bevels on edges, no visible facets, no grime |
+| Kind        | What                                                                            | How it looks                                                                                |
+| ----------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| **Faceted** | Tree canopies, bushes, hedges, clouds                                           | Clearly low-poly: flat-shaded facets, chunky clustered blobs, 2–3 green tones per canopy    |
+| **Smooth**  | Everything else: buildings, roofs, roads, curbs, sidewalks, poles, signs, props | Simple clean shapes with smooth shading, small bevels on edges, no visible facets, no grime |
 
 Do **not** facet buildings or roads, and do **not** make trees smooth.
 
@@ -76,7 +77,7 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-const sun = new THREE.DirectionalLight(0xffe6c0, 3.0);     // warm sun; the ONE shadow caster
+const sun = new THREE.DirectionalLight(0xffe6c0, 3.0); // warm sun; the ONE shadow caster
 const sky = new THREE.HemisphereLight(0xbfd9f5, 0x8a9a5b, 1.0); // sky blue above, grassy bounce below
 scene.fog = new THREE.Fog(0xcfe3f5, 120, 450);
 ```
@@ -87,25 +88,25 @@ Tune by eye against the reference images, then update these numbers here.
 
 Put these on the shared `palette.png` and use them for generated surfaces. Pick from the palette instead of inventing colours.
 
-| Use | Hex |
-|---|---|
-| Sky top / horizon | `#5B9BE6` / `#A9CDF2` |
-| Cloud / cloud shade | `#FFFFFF` / `#DCE6F5` |
-| Foliage light / mid / dark | `#9BC34A` / `#6E9E2E` / `#4A7A22` |
-| Hedge | `#4F8A2A` |
-| Trunk / trunk shade | `#7A4E2D` / `#5A3820` |
-| Grass / grass shade | `#7DB83A` / `#5E9A2A` |
-| Asphalt | `#55545A` |
-| Road white / centre yellow | `#F2F2EE` / `#F2B530` |
-| Sidewalk / joints | `#D9D2C5` / `#BDB5A8` |
-| Curb / wall base band | `#CFCAC0` / `#BEB8AC` |
-| Roof terracotta / shade | `#D9622B` / `#B44A20` |
-| Stucco beige / tan | `#D8C29A` / `#C9A878` |
-| Ochre wall / white render | `#E6B85C` / `#F1EFEA` |
-| Cream trim | `#EFE6D2` |
-| Charcoal (caps, frames, poles) | `#3A3B3F` |
-| Storefront navy | `#23397A` |
-| Window glass | `#2E3B47` |
+| Use                                     | Hex                                           |
+| --------------------------------------- | --------------------------------------------- |
+| Sky top / horizon                       | `#5B9BE6` / `#A9CDF2`                         |
+| Cloud / cloud shade                     | `#FFFFFF` / `#DCE6F5`                         |
+| Foliage light / mid / dark              | `#9BC34A` / `#6E9E2E` / `#4A7A22`             |
+| Hedge                                   | `#4F8A2A`                                     |
+| Trunk / trunk shade                     | `#7A4E2D` / `#5A3820`                         |
+| Grass / grass shade                     | `#7DB83A` / `#5E9A2A`                         |
+| Asphalt                                 | `#55545A`                                     |
+| Road white / centre yellow              | `#F2F2EE` / `#F2B530`                         |
+| Sidewalk / joints                       | `#D9D2C5` / `#BDB5A8`                         |
+| Curb / wall base band                   | `#CFCAC0` / `#BEB8AC`                         |
+| Roof terracotta / shade                 | `#D9622B` / `#B44A20`                         |
+| Stucco beige / tan                      | `#D8C29A` / `#C9A878`                         |
+| Ochre wall / white render               | `#E6B85C` / `#F1EFEA`                         |
+| Cream trim                              | `#EFE6D2`                                     |
+| Charcoal (caps, frames, poles)          | `#3A3B3F`                                     |
+| Storefront navy                         | `#23397A`                                     |
+| Window glass                            | `#2E3B47`                                     |
 | Sign accents: red / green / teal / navy | `#C8372D` / `#6FA83A` / `#2F7F8C` / `#1F3F8F` |
 
 ## Scope reminder

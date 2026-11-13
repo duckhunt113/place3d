@@ -2,7 +2,7 @@
 
 ## The decision layer
 
-One module (`packages/world/src/decide`) answers: *what is this feature, how big, which side is the front, what goes here?*
+One module (`packages/world/src/decide`) answers: _what is this feature, how big, which side is the front, what goes here?_
 Input: a feature plus its context. Output: a `Decision` (see [03-architecture.md](03-architecture.md)).
 
 For every question, take the first answer available:
@@ -31,15 +31,15 @@ no height tag                    -> default for type
 
 ### Clues for unlabelled buildings (`building=yes`)
 
-| Clue | Suggests |
-|---|---|
-| Shop/amenity points inside the footprint | Retail (strongest clue) |
-| Large footprint (500+ m2), long rectangle | Plaza, store or warehouse |
-| Next to a parking lot | Commercial |
-| Small footprint (100–250 m2) | House |
-| Many similar small neighbours on a residential street | House |
-| Inside `landuse=residential` / `landuse=retail` | Matches the area |
-| Tiny (< 30 m2) behind a house | Shed or garage |
+| Clue                                                  | Suggests                  |
+| ----------------------------------------------------- | ------------------------- |
+| Shop/amenity points inside the footprint              | Retail (strongest clue)   |
+| Large footprint (500+ m2), long rectangle             | Plaza, store or warehouse |
+| Next to a parking lot                                 | Commercial                |
+| Small footprint (100–250 m2)                          | House                     |
+| Many similar small neighbours on a residential street | House                     |
+| Inside `landuse=residential` / `landuse=retail`       | Matches the area          |
+| Tiny (< 30 m2) behind a house                         | Shed or garage            |
 
 ### Trained model (later)
 
@@ -52,6 +52,7 @@ no height tag                    -> default for type
 The goal is no copy-pasted "retail shop" model. Each real building, court or playground gets a **profile**, and the generator assembles it from kit pieces to match.
 
 Example facade profile:
+
 ```
 building #123456 "Lorne Park Plaza"
   wall colour: beige        roof: orange tile, hipped
@@ -61,6 +62,7 @@ building #123456 "Lorne Park Plaza"
 ```
 
 Example court profile:
+
 ```
 court #88213 (basketball)
   shape/size/orientation: from OSM outline
@@ -73,28 +75,28 @@ The same pattern works for any place type: playgrounds (equipment, colours, surf
 
 Where each detail comes from:
 
-| Detail | Source |
-|---|---|
-| Shape, size, angle | OSM outline (exact) |
-| Names (sign text) | OSM shop points inside the building |
-| Which shop is in which unit | Shop point positions along the storefront wall |
-| Roof shape and colour | OSM tags, otherwise aerial photos |
-| Wall colour, material | OSM tags, otherwise street photos |
-| Doors, windows, pillars, awnings, sign colours, hoop style | Street photos (Mapillary) read by vision AI |
-| Court surface colours, line layout, hoop count | Aerial photos read by vision AI |
+| Detail                                                     | Source                                         |
+| ---------------------------------------------------------- | ---------------------------------------------- |
+| Shape, size, angle                                         | OSM outline (exact)                            |
+| Names (sign text)                                          | OSM shop points inside the building            |
+| Which shop is in which unit                                | Shop point positions along the storefront wall |
+| Roof shape and colour                                      | OSM tags, otherwise aerial photos              |
+| Wall colour, material                                      | OSM tags, otherwise street photos              |
+| Doors, windows, pillars, awnings, sign colours, hoop style | Street photos (Mapillary) read by vision AI    |
+| Court surface colours, line layout, hoop count             | Aerial photos read by vision AI                |
 
 ## Where AI is used (and isn't)
 
-| Step | AI? |
-|---|---|
-| Fetching map data | No |
-| Deciding building types when tags are missing | Rules first; small trained model later |
-| **Profiles: colours, layout, signs** | **Yes: vision AI on street and aerial photos** |
-| Building the 3D geometry | **No**: plain code |
-| Placing pre-made assets | No: rules |
-| Fun extras (restyles, quests, characters) | Yes, later |
+| Step                                          | AI?                                            |
+| --------------------------------------------- | ---------------------------------------------- |
+| Fetching map data                             | No                                             |
+| Deciding building types when tags are missing | Rules first; small trained model later         |
+| **Profiles: colours, layout, signs**          | **Yes: vision AI on street and aerial photos** |
+| Building the 3D geometry                      | **No**: plain code                             |
+| Placing pre-made assets                       | No: rules                                      |
+| Fun extras (restyles, quests, characters)     | Yes, later                                     |
 
-**AI describes; code builds.** AI-generated geometry is imprecise, inconsistent and costly. The generator takes AI output as *parameters*.
+**AI describes; code builds.** AI-generated geometry is imprecise, inconsistent and costly. The generator takes AI output as _parameters_.
 
 ### Rules for any AI feature
 
@@ -112,6 +114,7 @@ Where each detail comes from:
 The plan above is the foundation. AI goes on top as the layer that makes people say "how did it know that?". Here it is in a sensible order.
 
 **Phase 1: "It looks like my street"** (the biggest wow)
+
 - **Profiles from photos:** AI reads street and aerial photos, so your plaza gets its real colours, layout and shop signs, and your local court gets its real green surface and red keys.
 - **Gap filling:** AI decides what unlabelled buildings are, so no area looks unfinished.
 - **Real trees:** AI finds tree canopies in aerial photos, so the big trees on Albertson Crescent are where they really are.
@@ -119,6 +122,7 @@ The plan above is the foundation. AI goes on top as the layer that makes people 
 This is the moment someone enters their address and gasps.
 
 **Phase 2: "I can change the world by talking"**
+
 - **Restyle:** "make it winter", "turn it into a candy world", "zombie apocalypse". AI swaps materials, sky, weather and kit variants, and keeps the real layout.
 - **Add things:** "put a skate park in this parking lot", "build a treehouse here". AI picks and places kit pieces.
 - **Spawn props:** "giant rubber duck". Text-to-3D creates it once and saves it, and it drops into the physics world.
@@ -126,6 +130,7 @@ This is the moment someone enters their address and gasps.
 These are the moments people clip and share.
 
 **Phase 3: "The world is alive"**
+
 - **Quests from real places:** e.g. "deliver flowers from Berkshire Flowers to a house on Albertson Crescent".
 - **AI characters:** shopkeepers and a guide who know real facts about the area.
 - **Game master:** AI invents events while you play ("an ice cream truck just pulled into the plaza!").
@@ -147,6 +152,7 @@ AI -> "skate park, here, this size"   -> code places kit pieces
 - **Kid-safe:** filter what players type and what AI says.
 
 **Order**
+
 1. MVP: no AI. Prove the world works. A world-quality pass (v0.2) and multiplayer (v0.3) come before any AI (see [12-roadmap.md](12-roadmap.md)).
 2. Phase 1: profiles, gap filling and trees, for realism.
 3. Phase 2: restyles and "add things", which are fun and shareable.

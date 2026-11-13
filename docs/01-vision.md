@@ -29,16 +29,17 @@ Most of the visual "wow" comes from art direction (a small, consistent asset kit
 
 Checked in November 2026:
 
-| Project | What it does | Gap we fill |
-|---|---|---|
-| World Explorer 3D | Browser multiplayer sandbox on real geography, rooms tied to locations | Rough, learning-project quality |
-| OpenWorld3D | OSM city in 3D, walk into buildings, drive, NPCs | Multiplayer unclear; not our style |
-| Hop.Earth | Drive any OSM road; multiplayer races; buildings simplified | Driving only |
-| Arnis / Map2Minecraft | Any address to a Minecraft world | Blocky, needs Minecraft |
-| Google Project Genie | AI-generated walkable video of real places | Not real 3D, US-only, $200/mo, single player |
-| Wandering Around | Walk any town in the browser from OSM | Walking only |
+| Project               | What it does                                                           | Gap we fill                                  |
+| --------------------- | ---------------------------------------------------------------------- | -------------------------------------------- |
+| World Explorer 3D     | Browser multiplayer sandbox on real geography, rooms tied to locations | Rough, learning-project quality              |
+| OpenWorld3D           | OSM city in 3D, walk into buildings, drive, NPCs                       | Multiplayer unclear; not our style           |
+| Hop.Earth             | Drive any OSM road; multiplayer races; buildings simplified            | Driving only                                 |
+| Arnis / Map2Minecraft | Any address to a Minecraft world                                       | Blocky, needs Minecraft                      |
+| Google Project Genie  | AI-generated walkable video of real places                             | Not real 3D, US-only, $200/mo, single player |
+| Wandering Around      | Walk any town in the browser from OSM                                  | Walking only                                 |
 
 **Our edge is quality and fun, not the concept:**
+
 - a polished stylized look
 - playful physics
 - recognisable details (real shop names, real colours)

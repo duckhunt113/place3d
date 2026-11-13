@@ -9,21 +9,21 @@ Status: **MVP in progress.** The workspace is set up; world code starts with ste
 
 ## Contents
 
-| # | Doc | What's in it |
-|---|---|---|
-| 01 | [Vision](01-vision.md) | What we're building, the look, what makes it different |
-| 02 | [MVP](02-mvp.md) | Exact MVP scope, build order, "done when" |
-| 03 | [Architecture](03-architecture.md) | Workspace layout, layers, the engine-free rule, data contracts |
-| 04 | [Generation pipeline](04-pipeline.md) | Step-by-step from coordinates to playable world, tile caching |
-| 05 | [Data sources](05-data-sources.md) | OpenStreetMap explained, Overpass, other sources, limits |
-| 06 | [Decisions, profiles and AI](06-decisions-and-ai.md) | How the program decides what things are and how they look; where AI fits |
-| 07 | [Assets](07-assets.md) | Generated vs pre-made, starter asset kit, style rules |
-| 08 | [Missing data](08-missing-data.md) | What to do when the map has nothing (e.g. an unmapped basketball court) |
-| 09 | [Rendering and player](09-rendering-and-player.md) | Three.js, performance budgets, first-person controls, physics |
-| 10 | [Tech stack](10-tech-stack.md) | Every tool, library and service, MVP vs later |
-| 11 | [Legal, privacy and safety](11-legal-and-privacy.md) | Licences, attribution, Google data, logos, private homes, kid safety |
-| 12 | [Roadmap](12-roadmap.md) | Phases after the MVP |
-| 13 | [References](13-references.md) | Similar projects, useful repos, docs, skills |
+| #   | Doc                                                  | What's in it                                                             |
+| --- | ---------------------------------------------------- | ------------------------------------------------------------------------ |
+| 01  | [Vision](01-vision.md)                               | What we're building, the look, what makes it different                   |
+| 02  | [MVP](02-mvp.md)                                     | Exact MVP scope, build order, "done when"                                |
+| 03  | [Architecture](03-architecture.md)                   | Workspace layout, layers, the engine-free rule, data contracts           |
+| 04  | [Generation pipeline](04-pipeline.md)                | Step-by-step from coordinates to playable world, tile caching            |
+| 05  | [Data sources](05-data-sources.md)                   | OpenStreetMap explained, Overpass, other sources, limits                 |
+| 06  | [Decisions, profiles and AI](06-decisions-and-ai.md) | How the program decides what things are and how they look; where AI fits |
+| 07  | [Assets](07-assets.md)                               | Generated vs pre-made, starter asset kit, style rules                    |
+| 08  | [Missing data](08-missing-data.md)                   | What to do when the map has nothing (e.g. an unmapped basketball court)  |
+| 09  | [Rendering and player](09-rendering-and-player.md)   | Three.js, performance budgets, first-person controls, physics            |
+| 10  | [Tech stack](10-tech-stack.md)                       | Every tool, library and service, MVP vs later                            |
+| 11  | [Legal, privacy and safety](11-legal-and-privacy.md) | Licences, attribution, Google data, logos, private homes, kid safety     |
+| 12  | [Roadmap](12-roadmap.md)                             | Phases after the MVP                                                     |
+| 13  | [References](13-references.md)                       | Similar projects, useful repos, docs, skills                             |
 
 ## The idea in one diagram
 

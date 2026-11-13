@@ -5,6 +5,7 @@
 OSM is a free, volunteer-built map of the world. Anyone can edit it; anyone can use the data, including in games, under the Open Database License (ODbL).
 
 **Where the data comes from:**
+
 - volunteers tracing satellite imagery and adding local knowledge
 - imports from governments (Mississauga's building outlines, for example)
 - company contributors.
@@ -17,12 +18,14 @@ OSM is a free, volunteer-built map of the world. Anyone can edit it; anyone can 
 - **Tags**: `key=value` labels saying what it is. There's no fixed list; conventions live on the OSM wiki.
 
 Example: a plaza building (way) and a shop inside it (node):
+
 ```
 way  building=retail, building:levels=1, roof:shape=flat, name=Lorne Park Plaza
 node shop=dry_cleaning, name=<shop name>
 ```
 
 Tags we care about most:
+
 - `building=*`, `building:levels`, `height`, `roof:shape`, `roof:colour`, `building:colour`, `building:material`
 - `shop=*`, `amenity=*`, `name`
 - `highway=*`, `lanes`, `width`, `sidewalk=*`, `surface`
@@ -32,12 +35,12 @@ Tags we care about most:
 
 ### How to get it
 
-| Method | Use |
-|---|---|
-| **Overpass API** | Query one area live: "everything within 300 m of here". Use for the MVP |
-| **Geofabrik extracts** (download.geofabrik.de) | Download a region (Ontario, Canada) and self-host. Use at launch |
-| **planet.openstreetmap.org** | The whole world, about 80 GB compressed, updated weekly |
-| **Vector tiles** | Pre-cut tiles for fast loading (how Streets GL and Hop.Earth load fast) |
+| Method                                         | Use                                                                     |
+| ---------------------------------------------- | ----------------------------------------------------------------------- |
+| **Overpass API**                               | Query one area live: "everything within 300 m of here". Use for the MVP |
+| **Geofabrik extracts** (download.geofabrik.de) | Download a region (Ontario, Canada) and self-host. Use at launch        |
+| **planet.openstreetmap.org**                   | The whole world, about 80 GB compressed, updated weekly                 |
+| **Vector tiles**                               | Pre-cut tiles for fast loading (how Streets GL and Hop.Earth load fast) |
 
 ### Overpass fair use (public instances)
 
@@ -49,13 +52,13 @@ Tags we care about most:
 
 ### Reliability
 
-| Data | How reliable |
-|---|---|
-| Roads | Very good in Canada, the US and Europe |
-| Building outlines | Good in cities (Mississauga is well covered) |
-| Heights, roofs, colours, shop names, trees | Patchy; depends on local mappers |
-| Freshness | Popular areas update fast; quiet areas can lag months |
-| Vandalism | Rare and usually reverted quickly |
+| Data                                       | How reliable                                          |
+| ------------------------------------------ | ----------------------------------------------------- |
+| Roads                                      | Very good in Canada, the US and Europe                |
+| Building outlines                          | Good in cities (Mississauga is well covered)          |
+| Heights, roofs, colours, shop names, trees | Patchy; depends on local mappers                      |
+| Freshness                                  | Popular areas update fast; quiet areas can lag months |
+| Vandalism                                  | Rare and usually reverted quickly                     |
 
 Plan for missing details with defaults. Never rely on the public servers once real players arrive.
 
@@ -63,15 +66,15 @@ The OSM GitHub org (`openstreetmap-website`, `iD`) is the code for running opens
 
 ## Other sources
 
-| Source | Gives | When |
-|---|---|---|
-| Elevation tiles (AWS Terrain Tiles, as used by Arnis) | Ground height | After MVP |
-| **Mapillary** | Crowdsourced street photos (CC BY-SA 4.0), auto-blurred faces and plates, detected signs and poles, API access | Later (profiles) |
-| Mapilio, KartaView, Panoramax | Other open street-photo services to fill gaps | Later |
-| Licensed aerial imagery | Tree canopies, court colours, roof colours (check the licence allows derived data) | Later |
-| City open data, LiDAR | Street-tree inventories; tree positions and heights (Ontario publishes some LiDAR) | Later |
-| Open-Meteo | Real weather | Optional |
-| Sun position | Calculated from coordinates and time | Optional |
+| Source                                                | Gives                                                                                                          | When             |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------- |
+| Elevation tiles (AWS Terrain Tiles, as used by Arnis) | Ground height                                                                                                  | After MVP        |
+| **Mapillary**                                         | Crowdsourced street photos (CC BY-SA 4.0), auto-blurred faces and plates, detected signs and poles, API access | Later (profiles) |
+| Mapilio, KartaView, Panoramax                         | Other open street-photo services to fill gaps                                                                  | Later            |
+| Licensed aerial imagery                               | Tree canopies, court colours, roof colours (check the licence allows derived data)                             | Later            |
+| City open data, LiDAR                                 | Street-tree inventories; tree positions and heights (Ontario publishes some LiDAR)                             | Later            |
+| Open-Meteo                                            | Real weather                                                                                                   | Optional         |
+| Sun position                                          | Calculated from coordinates and time                                                                           | Optional         |
 
 ### Mapillary notes
 
