@@ -48,7 +48,7 @@ Tags we care about most:
 - One-off use: you won't disturb others under about **10,000 queries/day and 1 GB/day**.
 - Anything that runs regularly: **divide by 100**, so under about 100 queries and 10 MB/day.
 - Limits count per **application**: all your users added together.
-- Send a `User-Agent` / `Referer` that identifies the app.
+- Identify the app. Browsers can't set `User-Agent`, so the game relies on the `Referer` the browser sends; scripts and the server set a `User-Agent` naming the app.
 - The public servers are volunteer-run and sometimes slow or down. Fine for development; at launch, switch to pre-built tiles.
 
 ### Plan by phase

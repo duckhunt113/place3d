@@ -59,25 +59,36 @@ type LatLon = { lat: number; lon: number };
 type Vec2 = [number, number]; // local metres [x, z]: x east, z south (north is -z; y is up)
 type TileId = { z: 17; x: number; y: number }; // slippy-map tile, about 220 m in southern Ontario
 
-type Feature =
-  | { kind: "building"; osmId: string; footprint: Vec2[]; tags: Record<string, string> }
-  | { kind: "road"; osmId: string; line: Vec2[]; tags: Record<string, string> }
-  | { kind: "area"; osmId: string; outline: Vec2[]; holes?: Vec2[][]; tags: Record<string, string> }
-  | { kind: "point"; osmId: string; at: Vec2; tags: Record<string, string> };
+// OSM numbers nodes, ways and relations separately, so IDs are always type-qualified.
+type OsmId = `${"node" | "way" | "relation"}/${number}`; // e.g. "way/123"
 
+type Tags = Record<string, string>;
+
+// One feature shape, two coordinate types:
+//   GeoFeature = FeatureOf<LatLon>  stored and cached (region-independent)
+//   Feature    = FeatureOf<Vec2>    projected to local metres when generating; never stored
+type FeatureOf<P> =
+  | { kind: "building"; osmId: OsmId; footprint: P[]; tags: Tags }
+  | { kind: "road"; osmId: OsmId; line: P[]; tags: Tags }
+  | { kind: "area"; osmId: OsmId; outline: P[]; holes?: P[][]; tags: Tags }
+  | { kind: "point"; osmId: OsmId; at: P; tags: Tags };
+type GeoFeature = FeatureOf<LatLon>;
+type Feature = FeatureOf<Vec2>;
+
+// One decision per osmId. Never stored per tile.
+// MVP: recomputed from tags + rules on load. Later: shared table keyed by osmId.
 type Decision = {
-  // stored by osmId in a shared table
-  osmId: string;
+  osmId: OsmId;
   type: string; // "house", "retail", "court_basketball", ...
   storeys?: number;
   roof?: "flat" | "gabled" | "hipped" | "pyramidal";
-  front?: Vec2; // facing direction
+  frontBearing?: number; // degrees clockwise from north; region-independent
   source: "osm" | "rule" | "model" | "llm" | "default";
 };
 
 type Placement = {
   asset: string;
-  pos: [number, number, number];
+  pos: [number, number, number]; // local metres
   rotY: number;
   scale: number;
   tint?: string;
@@ -88,39 +99,30 @@ type MeshData = {
   positions: Float32Array;
   normals: Float32Array;
   uvs: Float32Array;
+  colors?: Float32Array; // vertex colours (rgb), e.g. foliage shading
   indices: Uint32Array;
 };
 
-type WorldTile = {
-  id: TileId;
-  version: number; // bump when the generator changes
-  generatedAt: string;
-  features: Feature[]; // stored with lat/lon coordinates; projected to local Vec2 when generating
-  decisions: Decision[];
-};
-// Meshes, placements and colliders are generated from features + decisions
-// each time a tile loads. They are never stored.
-
 // Tile source: the ONLY way map data enters the pipeline.
-// Every source returns the same normalized format and includes everything
-// that touches the tile (roads crossing the edge, buildings sticking out).
+// Every source returns the same format and includes everything that
+// touches the tile (roads crossing the edge, buildings sticking out).
 type OsmElement = {
   // Overpass `out geom` JSON shape
   type: "node" | "way" | "relation";
-  id: number;
-  tags?: Record<string, string>;
-  lat?: number;
-  lon?: number; // nodes
-  geometry?: { lat: number; lon: number }[]; // ways
-  members?: {
-    type: string;
-    ref: number;
-    role: string;
-    geometry?: { lat: number; lon: number }[];
-  }[];
+  id: number; // combine with type for an OsmId
+  tags?: Tags;
+  lat?: number; // nodes
+  lon?: number;
+  geometry?: LatLon[]; // ways
+  members?: { type: string; ref: number; role: string; geometry?: LatLon[] }[]; // relations
 };
-type TileData = { id: TileId; source: string; fetchedAt: string; elements: OsmElement[] };
-
+type TileData = {
+  id: TileId;
+  version: number; // tile format version; pre-built paths use it (tiles/v1/...)
+  source: string; // "file" | "overpass" | "prebuilt"
+  fetchedAt: string;
+  elements: OsmElement[];
+};
 interface TileSource {
   getTile(id: TileId): Promise<TileData>;
 }
@@ -128,6 +130,16 @@ interface TileSource {
 //   FileTileSource      saved tiles (MVP step 1, and test fixtures)
 //   OverpassTileSource  live public Overpass (development, any location)
 //   PrebuiltTileSource  our pre-built tiles from object storage + CDN (launch)
+
+// What the cache stores: parsed features for one tile, in lat/lon.
+type WorldTile = {
+  id: TileId;
+  version: number; // bump when parsing or the format changes
+  generatedAt: string;
+  features: GeoFeature[];
+};
+// Decisions are looked up by osmId (see Decision). Meshes, placements and
+// colliders are generated each time a tile loads and are never stored.
 
 // Cache interface: defined here, implemented per platform
 // (IndexedDB in apps/web/src/cache, files/database in apps/server later).
@@ -141,6 +153,8 @@ interface TileCache {
 
 - One world coordinate system per **region** (the zoom-10 tile containing the entered point): Web Mercator in float64, minus the region's north-west corner, scaled by `cos(latitude of the region centre)` to real metres (formula in `CLAUDE.md`, hard rule 3). The same place always gets the same region, so every machine gets the same positions, and local numbers stay small enough for float32.
 - Axes follow Three.js (y up, right-handed): x = east, z = south, so north is −z. Getting this wrong mirrors the map.
+- Anything stored or shared (tiles, decisions) uses lat/lon, OSM IDs or bearings, never local x/z.
+- Later, when players can travel beyond one region (tile streaming), the world re-centres on the new region (an origin shift). Not needed in the MVP.
 - Seeded random only, seeded from stable **global** values (OSM id, tile id, or global Web Mercator coordinates rounded to a grid), never from local x/z. Never `Math.random()` in generation.
 - Same `WorldTile` in → same geometry out, on every machine. Tests should check this.
 

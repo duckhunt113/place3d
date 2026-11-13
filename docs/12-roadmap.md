@@ -14,7 +14,7 @@ Coordinates in, a 300 m stylized area out, walking around it in first person. Ta
 - Building kit pieces: storefront bays, windows, doors, pillars, awnings, proper roofs (straight skeleton).
 - Utility poles and wires, street lights, street-name signs, more props.
 - Courts, fields and playgrounds with kit pieces.
-- Tile streaming as you walk (bigger areas).
+- Tile streaming as you walk (bigger areas), with an origin shift when crossing into a new region.
 - Quality presets; phone testing.
 
 ## v0.3: Multiplayer

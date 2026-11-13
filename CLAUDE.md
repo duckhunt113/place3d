@@ -68,18 +68,19 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
 ## Hard rules
 
 1. **`packages/world` never imports three.js, Rapier or DOM APIs.** It outputs plain data: typed-array meshes, placements and collider shapes. Only `apps/web/src/render` turns that data into Three.js objects, and only `apps/web/src/physics` and `src/player` import Rapier. This keeps generation testable, lets it run on the server later, and makes the renderer swappable.
-2. **Deterministic generation.** Never use `Math.random()` in generation code. Use the seeded RNG from `packages/world/src/util`, seeded from stable **global** values (OSM id, tile id, or global Web Mercator coordinates rounded to a grid), never from local x/z, which depend on the region origin. The same input must give the same world on every machine. Add or keep tests for this.
+2. **Deterministic generation.** Never use `Math.random()` in generation code. Use the seeded RNG from `packages/world/src/util`, seeded from stable **global** values (OSM id such as `way/123`, tile id, or global Web Mercator coordinates rounded to a grid), never from local x/z, which depend on the region origin. The same input must give the same world on every machine. Add or keep tests for this.
 3. **Real units and projection.** 1 unit = 1 metre. Axes match Three.js (y up, right-handed): x = east, z = south, so north is −z.
    - **Region:** the zoom-10 map tile containing the entered point (about 28 km across in southern Ontario). The same place always gets the same region; never derive it from the player's position, the session or the device.
    - **Projection:** compute Web Mercator (EPSG:3857) coordinates `X, Y` in float64, then `x = (X − X0) · k` and `z = −(Y − Y0) · k`, where `(X0, Y0)` is the region's north-west corner and `k = cos(latitude of the region's centre)` corrects Mercator stretch to real metres. Everyone in a world or room uses the same region.
    - Keep local coordinates small (within one region) so float32 GPU positions stay precise.
-   - **Stored tiles keep lat/lon,** so the cache doesn't depend on the region; project when generating.
+   - **Anything stored or shared** (tiles, decisions) uses lat/lon, OSM IDs or bearings, never local x/z; project when generating.
+   - Later, travel beyond one region needs an origin shift (re-centre on the new region). Not in the MVP.
    - **Reference sizes:** lane 3.5 m, curb 0.15 m, door 2.1 m, storey 3 m, eye height 1.7 m.
 4. **Tiles.**
    - Cache by fixed zoom-17 map tiles (about 220 m across in southern Ontario; 306 m × cos(latitude)), never by "circle around a point".
    - Each building belongs to one owner tile, chosen by its centroid.
    - Lines are clipped at tile edges.
-   - Decisions are stored by OSM ID, never per tile.
+   - Decisions are keyed by OSM ID, never stored per tile. OSM IDs are always type-qualified (`node/1`, `way/123`, `relation/9`), because OSM numbers each type separately.
    - Saved tiles carry a `version` and a timestamp.
    - **Map data only comes through the `TileSource` interface** (`packages/world/src/data`). `getTile(id)` returns that tile's OSM elements in one normalized format (Overpass `out geom` JSON), including everything that _touches_ the tile, not only what lies inside, plus the source name and fetch time. Nothing else calls Overpass or any other map service.
    - **Sources by phase:** saved files (MVP step 1; the same files are the test fixtures) → live Overpass (any location, during development) → pre-built tiles in object storage behind a CDN (launch). Don't self-host Overpass.
@@ -96,7 +97,7 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
 8. **Data and legal:**
    - Never use Google Maps, Street View or 3D Tiles data. Their terms forbid it.
    - Always show "© OpenStreetMap contributors".
-   - Identify the app to Overpass and respect its fair-use limits; cache aggressively.
+   - Identify the app to Overpass where possible (browsers can't set `User-Agent`, so the browser relies on the `Referer` it sends; scripts and the server set a `User-Agent`), respect its fair-use limits, and cache aggressively.
    - Draw shop **names** in our own style, never real logos.
    - Private homes stay generic; only public places get detailed.
 9. **Kid-safe.** Anything user-typed or AI-generated must be filtered (relevant once prompts or chat exist).
@@ -117,6 +118,7 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
 - **Bugs:** every bug fix adds a test that fails without the fix.
 - **Assertions:** check real values with tolerances where maths is involved (`toBeCloseTo`), not just "is defined" or "doesn't throw".
 - **Speed:** the whole suite should run in a few seconds; no sleeps or timers.
+- **Web tests:** `apps/web` has no test setup yet. When the first web test is written, add Vitest (`pnpm --filter @somewhere/web add -D vitest`) and a `"test": "vitest run"` script in the same change.
 - **Empty-suite flag:** `packages/world` runs Vitest with `--passWithNoTests` only until its first test exists; remove the flag in the same change that adds that test.
 - **Done means green:** before calling any change finished, run `pnpm lint && pnpm typecheck && pnpm test` and fix any failure. Never delete, skip (`.skip`) or weaken a failing test to make it pass unless the behaviour was intentionally changed, and say so when you do.
 
