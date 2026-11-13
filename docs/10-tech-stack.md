@@ -10,7 +10,7 @@
 | **Vite** | Dev server with instant reload; production build | MVP |
 | **Git + GitHub** | Version history and backup | MVP |
 | **VS Code** | Editor with the best TypeScript support | MVP |
-| **Vitest** | Tests, especially "same input gives the same world" | MVP |
+| **Vitest** | Tests, especially "same input gives the same world". Test files sit next to the code as `*.test.ts`; rules in `CLAUDE.md` | MVP |
 
 ## Libraries
 
@@ -18,14 +18,14 @@
 |---|---|---|
 | **three** (+ `@types/three`) | `apps/web` only | MVP |
 | **@dimforge/rapier3d-compat** | `apps/web` (and the server later) | MVP |
-| **Colyseus** (or Socket.IO) | Multiplayer rooms and sync | Later |
+| **Colyseus** | Multiplayer rooms and sync | Later |
 
 ## Data
 
 | Source | When |
 |---|---|
 | OpenStreetMap via Overpass API | MVP |
-| Tile cache (local, then server storage) | MVP |
+| Tile cache: interface in `@somewhere/world`, IndexedDB in the browser (server storage later) | MVP |
 | Elevation tiles | Later |
 | Mapillary (+ Mapilio / KartaView / Panoramax) | Later |
 | Licensed aerial imagery, city tree data, LiDAR | Later |
@@ -48,7 +48,7 @@
 
 | Thing | When |
 |---|---|
-| Blender (+ Blender MCP) | MVP (small kit) |
+| Blender (+ Blender MCP), or ready-made CC0 models | Optional, for making or tweaking the kit |
 | `.glb` models | MVP |
 | Shared palette texture | MVP |
 | Style kits (suburban, estate, plaza, ...) | Later |

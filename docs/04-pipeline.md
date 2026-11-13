@@ -62,7 +62,7 @@ The tiles are sent to every player in the room. Everyone gets the same files, so
 **8. Place assets**
 - Split walls into 3–4 m sections and fill them with kit pieces using the facade profile: storefronts, doors, windows, pillars, signs with real names. This comes later; the MVP uses plain boxes plus a name sign.
 - Put mapped items at their exact spots: trees, signs, benches.
-- Rule-based items are **seeded by world position**, so they line up across tiles:
+- Rule-based items are **seeded by global position** (rounded Web Mercator coordinates, not local x/z), so they line up across tiles:
   - poles every 40 m
   - a mailbox per driveway
   - scattered trees.
@@ -107,7 +107,7 @@ The tiles are sent to every player in the room. Everyone gets the same files, so
 - Decisions and facade profiles are stored by OSM feature ID in one shared table, not per tile. Tiles never contradict each other, and you never pay for AI twice.
 - Each building belongs to one owner tile (the tile containing its centre), so it is generated once.
 - Roads and long lines are clipped at tile edges. Both halves line up because they come from the same line.
-- Rule-based items (scattered trees, poles every 40 m) are seeded by world position, not by tile, so they line up across edges.
+- Rule-based items (scattered trees, poles every 40 m) are seeded by global position, not by tile or local x/z, so they line up across edges.
 
 **Freshness and safety**
 - Each tile has a version and a timestamp. Regenerate tiles that are old (more than a few months) or when the generator improves.

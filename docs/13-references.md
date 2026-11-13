@@ -45,7 +45,7 @@ openstreetmap.org → zoom in → "Query features" tool (cursor with a question 
 - Frontend design: `pnpm dlx skills add anthropics/skills --skill frontend-design`
 - Blender procedural kit pieces: `pnpm dlx claudepluginhub arjun988/blender-skills --plugin blender-skills`
 - Claude plugins: **parallax-threejs** (Three.js debugging + visual regression), **Render** (hosting, later)
-- Write your own project skills once code exists:
-  1. art style guide
-  2. OSM tag rules
-  3. project conventions
+- Project skills live in `.claude/skills/`:
+  1. art style guide: done (`.claude/skills/art-style/`)
+  2. OSM tag rules: to write
+  3. project conventions: to write

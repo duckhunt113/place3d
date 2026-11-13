@@ -1,6 +1,6 @@
 # 07 — Assets: generated vs pre-made
 
-**Rule:** if the shape comes from the map, generate it in code. If it's the same object everywhere, pre-make it in Blender once and reuse it everywhere.
+**Rule:** if the shape comes from the map, generate it in code. If it's the same object everywhere, use a pre-made `.glb` model and reuse it everywhere.
 
 So the project needs both:
 - a **generator** that builds map-shaped models on the fly
@@ -38,7 +38,9 @@ So the project needs both:
 - Shop names drawn onto blank sign boards; street names onto blank street signs.
 - Profile colours applied to kit pieces.
 
-## Pre-made in Blender (`apps/web/public/assets/*.glb`)
+## Pre-made models (`apps/web/public/assets/*.glb`)
+
+The `.glb` files are the source of truth; no source art is kept in the repo. They can come from anywhere (made or tweaked in Blender, free CC0 packs, AI-drafted and cleaned up) as long as they follow the style rules below and their licence allows use in the game. Record each third-party model's source and licence in `apps/web/public/assets/CREDITS.md`.
 
 Starter kit, about 30 pieces:
 
@@ -100,7 +102,7 @@ MVP subset: about 5 trees and a few props. Buildings are plain boxes plus a name
 
 - **Kit pieces onto wall sections**, chosen using the facade and court profiles.
 - **Mapped items at their exact spots**: trees, signs, benches and the like from OSM.
-- **Rule-based items**, seeded by world position so they line up across tiles:
+- **Rule-based items**, seeded by global position (not local x/z) so they line up across tiles:
   - poles every 40 m
   - a mailbox per driveway
   - scattered trees in yards and parks.
@@ -108,9 +110,10 @@ MVP subset: about 5 trees and a few props. Buildings are plain boxes plus a name
 
 ## Style rules
 
+- **Two kinds of surface:** tree canopies, bushes, hedges and clouds are faceted low-poly (flat-shaded); buildings, roads, signs and props are smooth and simplified. Full rules, palette and reference images: `.claude/skills/art-style/`.
 - **One shared colour palette texture (atlas)** for all assets. Everything matches, and nearly everything shares one material.
 - **Low-poly budgets:** trees 300–800 triangles; props 50–300; wall pieces under 200.
-- **Real scale:** 1 unit = 1 metre; origin at the base centre; all assets face the same direction (+Z forward, consistently).
+- **Real scale:** 1 unit = 1 metre; origin at the base centre; all assets face +Z (the glTF default).
 - **Reference sizes:** lane 3.5 m, curb 0.15 m, door 2.1 m, one storey 3 m, eye height 1.7 m.
 - **Collision:** each asset has a simple matching shape (box or cylinder) for physics.
 - **Naming:** `tree_leafy_m.glb`, `prop_hydrant.glb`, `kit_storefront_bay.glb`, `kit_wall_plain.glb`.
@@ -123,6 +126,6 @@ MVP subset: about 5 trees and a few props. Buildings are plain boxes plus a name
 
 ## Tools
 
-- Blender (with the Blender MCP for AI-assisted modelling).
+- Any modelling tool; Blender (with the Blender MCP for AI-assisted modelling) works well.
 - Optional: text-to-3D to draft props, then clean them up.
 - Optional skill: `arjun988/blender-skills` for procedural/parametric kit pieces (see [13-references.md](13-references.md)).

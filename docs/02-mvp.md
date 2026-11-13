@@ -2,13 +2,13 @@
 
 ## Goal
 
-Enter coordinates → a 300 m area appears in the low-poly style → you can walk around it in first person.
+Enter coordinates → a 300 m area appears in our stylized look → you can walk around it in first person.
 
 ## In the MVP
 
 1. **Location input**: latitude/longitude box, or paste a Google Maps link. We only read the coordinates out of the URL and never use Google's map data. Radius fixed at 300 m.
 2. **Map data**: OpenStreetMap from the public Overpass API. Flat ground (no terrain yet).
-3. **Tile caching**: save each generated tile so areas load instantly the second time (see [04-pipeline.md](04-pipeline.md)).
+3. **Tiles and caching**: fetch and build the area tile by tile from the start; save each tile so areas load instantly the second time (see [04-pipeline.md](04-pipeline.md)).
 4. **Decisions**: OSM tags + simple rules + safe defaults. No AI.
 5. **Generated in code**:
    - roads, curbs, sidewalks, lawns, parks, water
@@ -17,7 +17,7 @@ Enter coordinates → a 300 m area appears in the low-poly style → you can wal
    - flat roofs (a simple gabled roof on small houses only if easy)
    - colour by building type
    - a plain sign box with the real shop name on retail buildings
-6. **Pre-made kit (small)**: about 5 low-poly trees and a few street props.
+6. **Pre-made kit (small)**: about 5 trees and a few street props, in the `art-style` look.
 7. **Placement**: trees from OSM points plus a scattered fill in yards and parks; shop name signs.
 8. **Player**: first-person camera at 1.7 m eye height; WASD + mouse look (pointer lock); Shift to run; Space to jump. Capsule collisions with buildings and trees (Rapier).
 9. **Look**: bright sky, soft shadows, warm sunlight.
@@ -39,11 +39,11 @@ Enter coordinates → a 300 m area appears in the low-poly style → you can wal
 
 | Step | Result | Rough time |
 |---|---|---|
-| 1 | Coordinates in → plain grey roads and building boxes appear | 1–2 days |
+| 1 | Projection + tile grid; fetch Overpass data per zoom-17 tile; coordinates in → plain grey roads and building boxes appear | 2–3 days |
 | 2 | Style pass: colours, roofs, grass, trees, sky, shadows | 2–3 days |
 | 3 | First-person controls + Rapier physics | 1–2 days |
 | 4 | Shop name signs, parking lines, sidewalks | 1–2 days |
-| 5 | Tile caching | 1 day |
+| 5 | Saved tile cache (IndexedDB), so revisited areas load instantly | 1 day |
 
 Tip: step 1 can start with **no buildings at all** (roads + ground + walking) as a one-day stepping stone, then add boxes.
 

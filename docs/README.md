@@ -1,11 +1,11 @@
 # Somewhere — project docs
 
-**Somewhere** (working title) turns any real place into a bright, low-poly 3D world you can walk around.
+**Somewhere** (working title) turns any real place into a bright, stylized 3D world you can walk around.
 You type coordinates, and everything inside a radius around them is rebuilt in 3D from OpenStreetMap
 data: roads, buildings with real shop names, parks, trees. You explore it in first person in your web
 browser. Exploring with friends comes after the MVP.
 
-Status: **planning / pre-MVP.** No code yet. Start with [02-mvp.md](02-mvp.md).
+Status: **MVP in progress.** The workspace is set up; world code starts with step 1 of [02-mvp.md](02-mvp.md).
 
 ## Contents
 
@@ -32,6 +32,6 @@ coordinates + radius
   -> fetch OpenStreetMap data for the tiles in that circle
   -> decide what every feature is (tags > rules > defaults; AI later)
   -> generate roads, ground, buildings in code
-  -> place pre-made low-poly assets (trees, signs, kit pieces)
+  -> place pre-made assets (trees, signs, kit pieces)
   -> walk around in first person
 ```

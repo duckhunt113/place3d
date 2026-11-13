@@ -5,14 +5,18 @@
 ```
 somewhere/
   apps/
-    web/                 browser app: Vite + TypeScript + Three.js + Rapier
+    web/                 @somewhere/web: Vite + TypeScript + Three.js + Rapier
+      src/ui/            coordinate input, loading screen, OSM credit
+      src/worker/        Web Worker running @somewhere/world off the main thread
+      src/cache/         tile cache storage (IndexedDB)
       src/render/        the ONLY place that imports three.js
-      src/player/        first-person camera, controls, physics capsule
-      public/assets/     .glb asset kit exported from Blender
-    server/              (later) multiplayer + tile generation/caching server
+      src/physics/       Rapier world + colliders from generator data
+      src/player/        first-person camera, controls, player capsule
+      public/assets/     .glb asset kit + CREDITS.md
+    server/              (later) Colyseus rooms + server-side fetch, decisions, tile storage
   packages/
     world/               plain TypeScript, NO three.js, NO DOM
-      src/data/          Overpass fetch, tile cache, lat/lon -> metres
+      src/data/          Overpass fetch, tiling, lat/lon -> metres, cache interface
       src/decide/        tag rules + defaults (later: trained model, LLM)
       src/generator/     roads, ground, buildings -> plain mesh data + placements
       src/util/          seeded random, maths helpers
@@ -27,7 +31,7 @@ somewhere/
 3. Generator     geometry + placements as plain data     -> packages/world (plain TS)
 4. Game logic    rules, (later) rooms, quests            -> plain TS
 5. Physics       Rapier                                  -> engine-independent
-6. Networking    (later) Colyseus or Socket.IO           -> engine-independent
+6. Networking    (later) Colyseus                        -> engine-independent
 7. Renderer      plain data -> Three.js objects          -> apps/web/src/render ONLY
 ```
 
@@ -77,17 +81,25 @@ type WorldTile = {
   id: TileId;
   version: number;                          // bump when the generator changes
   generatedAt: string;
-  features: Feature[];
+  features: Feature[];                      // stored with lat/lon coordinates; projected to local Vec2 when generating
   decisions: Decision[];
-  // Generated in the browser from the above. Not stored.
 };
+// Meshes, placements and colliders are generated from features + decisions
+// each time a tile loads. They are never stored.
+
+// Cache interface: defined here, implemented per platform
+// (IndexedDB in apps/web/src/cache, files/database in apps/server later).
+interface TileCache {
+  get(id: TileId): Promise<WorldTile | undefined>;
+  put(tile: WorldTile): Promise<void>;
+}
 ```
 
 ## Determinism
 
-- One world coordinate system: project lat/lon to local metres from a fixed origin per region (never per session or per player), so tiles line up and every machine gets the same positions.
+- One world coordinate system per **region** (the zoom-10 tile containing the entered point): Web Mercator in float64, minus the region's north-west corner, scaled by `cos(latitude of the region centre)` to real metres (formula in `CLAUDE.md`, hard rule 3). The same place always gets the same region, so every machine gets the same positions, and local numbers stay small enough for float32.
 - Axes follow Three.js (y up, right-handed): x = east, z = south, so north is −z. Getting this wrong mirrors the map.
-- Seeded random only, seeded from stable values (OSM id, world position, tile id). Never `Math.random()` in generation.
+- Seeded random only, seeded from stable **global** values (OSM id, tile id, or global Web Mercator coordinates rounded to a grid), never from local x/z. Never `Math.random()` in generation.
 - Same `WorldTile` in → same geometry out, on every machine. Tests should check this.
 
 ## Later: server/client split

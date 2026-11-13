@@ -6,8 +6,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "pnpm --filter web dev",
-    "build": "pnpm --filter web build",
+    "dev": "pnpm --filter @somewhere/web dev",
+    "build": "pnpm --filter @somewhere/web build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"
   }

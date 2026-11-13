@@ -13,9 +13,9 @@ It is **not** photorealistic. It is a stylized, recognisable version of the real
 
 ## The look
 
-- Bright, cheerful, kid-friendly low-poly style: chunky trees, clean shapes, warm sunlight, soft shadows, blue sky with fluffy clouds.
+- Bright, cheerful, kid-friendly **stylized** look: chunky faceted low-poly trees, smooth simplified buildings and streets, warm late-afternoon sun, soft dappled shadows, saturated blue sky with puffy clouds.
 - Recognisable: right street layout, right building shapes, real shop names on signs, real colours where we can get them.
-- Reference images from planning: a stylized strip plaza with tile roofs and shop signs; a stylized suburban street with poles, wires, curbs, lawns and big trees; a stylized estate house with gates. These are the art-direction target.
+- Reference images (the art-direction target) are in `.claude/skills/art-style/reference/`: a strip plaza from a side street, the plaza frontage along a main road, and a narrow street between stucco buildings. The full style rules, palette and lighting values are in `.claude/skills/art-style/SKILL.md`.
 
 Most of the visual "wow" comes from art direction (a small, consistent asset kit + good lighting), not from data.
 
