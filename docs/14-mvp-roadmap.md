@@ -2,7 +2,7 @@
 
 The build plan for the MVP (v0.1), in the order to build it. What the MVP includes is in [02-mvp.md](02-mvp.md); what comes after it is in [12-roadmap.md](12-roadmap.md).
 
-**Next up:** 1.1 Shared types.
+**Next up:** 1.4 Tile grid.
 
 How to use this file:
 
@@ -16,7 +16,7 @@ How to use this file:
 | Step | Result                                               | Status      |
 | ---- | ---------------------------------------------------- | ----------- |
 | 0    | Foundations: workspace, rules, art, models           | Done        |
-| 1    | Coordinates in → grey roads and building boxes       | Not started |
+| 1    | Coordinates in → grey roads and building boxes       | In progress |
 | 2    | Style pass: colours, ground, trees, sky, shadows     | Not started |
 | 3    | Walking: first-person controls and collisions        | Not started |
 | 4    | Details: sidewalks, curbs, parking lines, shop signs | Not started |
@@ -39,9 +39,9 @@ Goal: enter coordinates and see plain grey roads and building boxes in the right
 
 **World package (`packages/world/src`)**
 
-- [ ] 1.1 Shared types: `types.ts` with the contracts from [03-architecture.md](03-architecture.md) (`LatLon`, `Vec2`, `TileId`, `OsmId`, `GeoFeature`/`Feature`, `Decision`, `MeshData`, `Placement`, `TileData`, `TileSource`, `WorldTile`, `TileCache`, catalog, palette and rule types)
-- [ ] 1.2 Seeded RNG: `util/rng.ts`. Same seed string (e.g. `way/123`) → same numbers, on every machine
-- [ ] 1.3 Projection: `data/project.ts`. Region = zoom-10 tile of the entered point; lat/lon → local metres with the formula in `CLAUDE.md` hard rule 3. Tests: north is −z, east is +x, a known distance comes out in true metres
+- [x] 1.1 Shared types: `types.ts` with the contracts from [03-architecture.md](03-architecture.md) (`LatLon`, `Vec2`, `TileId`, `OsmId`, `GeoFeature`/`Feature`, `Decision`, `MeshData`, `Placement`, `TileData`, `TileSource`, `WorldTile`, `TileCache`, catalog, palette and rule types)
+- [x] 1.2 Seeded RNG: `util/rng.ts`. Same seed string (e.g. `way/123`) → same numbers, on every machine
+- [x] 1.3 Projection: `data/project.ts`. Region = zoom-10 tile of the entered point; lat/lon → local metres with the formula in `CLAUDE.md` hard rule 3. Tests: north is −z, east is +x, a known distance comes out in true metres
 - [ ] 1.4 Tile grid: `data/tiles.ts`. Lat/lon → zoom-17 tile id, a tile's bounding box, and the tiles a 300 m circle touches
 - [ ] 1.5 Saved tiles: `scripts/fetch-fixture-tiles.mjs` fetches the Albertson Crescent tiles from Overpass once (with a `User-Agent`) and writes them to `data/fixtures/`, one `TileData` JSON per tile
 - [ ] 1.6 Tile sources: `data/sources/file.ts` (`FileTileSource`, reads the saved tiles through a loader function, so the world package touches neither the file system nor the DOM) and `data/sources/overpass.ts` (`OverpassTileSource`: one `out geom` query per tile box, everything that touches the tile). Tests use saved responses only, never the network

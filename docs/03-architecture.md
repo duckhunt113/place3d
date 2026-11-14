@@ -59,6 +59,9 @@ Why:
 type LatLon = { lat: number; lon: number };
 type Vec2 = [number, number]; // local metres [x, z]: x east, z south (north is -z; y is up)
 type TileId = { z: 17; x: number; y: number }; // slippy-map tile, about 220 m in southern Ontario
+// The zoom-10 tile local coordinates are measured from. originX/originY = Web Mercator metres of its
+// north-west corner; k = cos(latitude at the middle of the tile, in Mercator metres).
+type Region = { z: 10; x: number; y: number; originX: number; originY: number; k: number };
 
 // OSM numbers nodes, ways and relations separately, so IDs are always type-qualified.
 type OsmId = `${"node" | "way" | "relation"}/${number}`; // e.g. "way/123"
