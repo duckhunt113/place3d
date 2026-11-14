@@ -40,6 +40,7 @@ Record any failure as a finding (with the exact error).
 - Only `apps/web/src/render` imports `three`; only `src/physics` and `src/player` import Rapier.
 - No `Math.random()`, `Date.now()` or `new Date()` in generation code; seeds come from global values.
 - No hard-coded `.glb` file names in generator, decision or AI code (assets go through the catalog selector).
+- No tag-specific `if/else` in code: OSM tag rules live only in `packages/world/src/decide/rules/*.json` (hard rule 12). Rules output asset requests and palette names, never asset ids or file names; `rules.test.ts` covers them.
 - No hard-coded hex colours in generator or render code where a palette name should be used.
 - Every module in `packages/world` has a `*.test.ts` next to it; no `test/` folders; no tests calling the network.
 - `--passWithNoTests` is gone once world tests exist.

@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "domain": "objects",
+  "note": "OSM tag rules for placed objects: asset requests (category + wanted attributes), never asset IDs or file names.",
+  "rules": [
+    {
+      "id": "tree.point",
+      "when": {
+        "natural": "tree"
+      },
+      "then": {
+        "place": "point",
+        "asset": {
+          "category": "tree",
+          "want": {
+            "leafType": "@leaf_type",
+            "genus": "@genus"
+          }
+        },
+        "heightM": "@height"
+      }
+    },
+    {
+      "id": "tree.row",
+      "when": {
+        "natural": "tree_row"
+      },
+      "then": {
+        "place": "along",
+        "spacingM": 10,
+        "asset": {
+          "category": "tree",
+          "want": {
+            "leafType": "@leaf_type",
+            "genus": "@genus"
+          }
+        }
+      }
+    },
+    {
+      "id": "shrub.point",
+      "when": {
+        "natural": "shrub"
+      },
+      "then": {
+        "place": "point",
+        "asset": {
+          "category": "bush"
+        }
+      }
+    },
+    {
+      "id": "hedge.line",
+      "when": {
+        "barrier": "hedge"
+      },
+      "then": {
+        "place": "along",
+        "spacingM": 2.0,
+        "asset": {
+          "category": "hedge"
+        }
+      }
+    },
+    {
+      "id": "hydrant.point",
+      "when": {
+        "emergency": "fire_hydrant"
+      },
+      "then": {
+        "place": "point",
+        "asset": {
+          "category": "prop.hydrant"
+        }
+      }
+    },
+    {
+      "id": "bench.point",
+      "when": {
+        "amenity": "bench"
+      },
+      "then": {
+        "place": "point",
+        "asset": {
+          "category": "prop.bench"
+        }
+      }
+    },
+    {
+      "id": "bin.point",
+      "when": {
+        "amenity": ["waste_basket", "recycling"]
+      },
+      "then": {
+        "place": "point",
+        "asset": {
+          "category": "prop.bin"
+        }
+      }
+    },
+    {
+      "id": "stop.point",
+      "when": {
+        "highway": "stop"
+      },
+      "then": {
+        "place": "point",
+        "asset": {
+          "category": "sign.stop"
+        }
+      }
+    }
+  ]
+}

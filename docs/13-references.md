@@ -48,5 +48,5 @@ openstreetmap.org → zoom in → "Query features" tool (cursor with a question 
 - Project skills live in `.claude/skills/`:
   1. art style guide: done (`.claude/skills/art-style/`)
   2. repo audit: done (`.claude/skills/repo-audit/`)
-  3. OSM tag rules: to write
+  3. OSM tag rules: done (`.claude/skills/osm-tag-rules/`)
   4. project conventions: to write

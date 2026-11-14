@@ -1,0 +1,131 @@
+{
+  "version": 1,
+  "domain": "areas",
+  "note": "OSM tag rules for areas: surface = palette colour name; scatter = seeded asset requests per square metre.",
+  "rules": [
+    {
+      "id": "area.parking",
+      "when": {
+        "amenity": "parking"
+      },
+      "then": {
+        "surface": "asphalt",
+        "markings": "stalls",
+        "curbs": true
+      }
+    },
+    {
+      "id": "area.park",
+      "when": {
+        "leisure": ["park", "garden"]
+      },
+      "then": {
+        "surface": "grass",
+        "scatter": [
+          {
+            "asset": {
+              "category": "tree"
+            },
+            "perM2": 0.004
+          },
+          {
+            "asset": {
+              "category": "prop.bench"
+            },
+            "perM2": 0.0005
+          }
+        ]
+      }
+    },
+    {
+      "id": "area.grass",
+      "when": {
+        "landuse": ["grass", "meadow", "village_green"]
+      },
+      "then": {
+        "surface": "grass"
+      }
+    },
+    {
+      "id": "area.residential",
+      "when": {
+        "landuse": "residential"
+      },
+      "then": {
+        "surface": "grass",
+        "scatter": [
+          {
+            "asset": {
+              "category": "tree"
+            },
+            "perM2": 0.0015
+          },
+          {
+            "asset": {
+              "category": "bush"
+            },
+            "perM2": 0.002
+          }
+        ]
+      }
+    },
+    {
+      "id": "area.wood",
+      "when": {
+        "natural": "wood"
+      },
+      "then": {
+        "surface": "grass.shade",
+        "scatter": [
+          {
+            "asset": {
+              "category": "tree",
+              "want": {
+                "leafType": "@leaf_type"
+              }
+            },
+            "perM2": 0.02
+          }
+        ]
+      }
+    },
+    {
+      "id": "area.forest",
+      "when": {
+        "landuse": "forest"
+      },
+      "then": {
+        "surface": "grass.shade",
+        "scatter": [
+          {
+            "asset": {
+              "category": "tree",
+              "want": {
+                "leafType": "@leaf_type"
+              }
+            },
+            "perM2": 0.02
+          }
+        ]
+      }
+    },
+    {
+      "id": "area.water",
+      "when": {
+        "natural": "water"
+      },
+      "then": {
+        "surface": "water"
+      }
+    },
+    {
+      "id": "area.sand",
+      "when": {
+        "natural": ["sand", "beach"]
+      },
+      "then": {
+        "surface": "sand"
+      }
+    }
+  ]
+}

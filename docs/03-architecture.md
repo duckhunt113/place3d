@@ -17,7 +17,7 @@ somewhere/
   packages/
     world/               plain TypeScript, NO three.js, NO DOM
       src/data/          tile sources (saved files, Overpass), tiling, lat/lon -> metres, cache interface
-      src/decide/        tag rules + defaults (later: trained model, LLM)
+      src/decide/        rule engine + rules/*.json (tag rules as data); later: trained model, LLM
       src/generator/     roads, ground, buildings -> plain mesh data + placements
       src/assets/        asset catalog types + selector
       src/util/          seeded random, maths helpers
@@ -142,6 +142,28 @@ type AssetRequest = { category: string; want?: Record<string, string | number> }
 // `want` and aren't deprecated, sort by id, pick one with the seeded RNG
 // (seed = OSM id or rounded global position). Nothing matches -> the category default.
 declare function selectAsset(catalog: AssetCatalog, req: AssetRequest, seed: string): AssetId;
+// The selector indexes the catalog by category (then attributes) once per catalog version,
+// so picking among 10,000+ assets stays instant.
+
+// OSM tag rules (packages/world/src/decide/rules/*.json): data, not code.
+// Values in `when`: an exact value, a list of values, or "*" (tag present, any value).
+// Values in `then` starting with "@" copy that OSM tag's value (e.g. "@building:levels");
+// if the tag is missing the field is left out. Rules output requests, never asset IDs.
+type Rule = {
+  id: string; // stable, e.g. "building.retail"; never renamed
+  when: Record<string, string | string[]>; // all must match
+  where?: Record<string, string | { lt?: number; lte?: number; gt?: number; gte?: number }>; // geometry facts
+  priority?: number; // 100 = copy a real OSM tag; default 0
+  then: Record<string, unknown>; // decision fields, palette names, asset requests
+};
+type RuleSet = {
+  version: number;
+  domain: "buildings" | "roads" | "areas" | "objects";
+  rules: Rule[];
+};
+// Engine: index rules by tag key; for a feature, collect rules whose keys it has, keep those whose
+// `when` and `where` match, apply them from least to most specific (higher priority last), so later
+// fields override earlier ones. Same input + same rules version = same decision.
 
 // Tile source: the ONLY way map data enters the pipeline.
 // Every source returns the same format and includes everything that

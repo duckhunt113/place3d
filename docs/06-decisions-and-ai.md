@@ -17,43 +17,37 @@ For every question, take the first answer available:
 
 Every decision is keyed by OSM ID, the same for everyone (MVP: recomputed from tags and rules on load; later: saved once in a shared table). When something pre-made goes in the world, the decision includes an **asset request** (category + attributes), never a file name; the asset catalog's selector picks the model (see [07-assets.md](07-assets.md)).
 
-### Rules (MVP)
+### Rules are data
+
+All tag rules live in `packages/world/src/decide/rules/` as JSON, one file per domain: `buildings.json`, `roads.json`, `areas.json`, `objects.json` (trees, hedges, hydrants, benches, signs). A small engine applies them; code never contains tag-specific `if/else`. Format and engine behaviour: [03-architecture.md](03-architecture.md). How to write rules: the `osm-tag-rules` skill.
+
+A few examples from the MVP rules:
 
 ```
-building=retail                  -> shop look, 1 storey, flat roof, storefronts face road/parking
-building=house                   -> house look, 2 storeys, gabled roof (MVP: flat unless gabled is easy), door faces road
-building=apartments              -> apartment look, building:levels or 4 storeys, flat roof
-building=yes + shop node inside  -> retail
-building=yes + small + residential area -> house
-building=yes + < 30 m2 behind a house   -> shed/garage
-no height tag                    -> default for type
+building=retail | commercial          -> retail, 1 storey, flat roof, shop colours, shop signs
+building=house | detached | ...       -> house, 2 storeys, flat roof (MVP), one of 8 house colours
+building=yes + shop nodes inside      -> retail                      (geometry fact: shopNodesInside >= 1)
+building=yes + < 30 m2                -> shed                         (geometry fact: footprintM2 < 30)
+building:levels=<n>                   -> storeys = n                  (real tag, priority 100: tags win)
+highway=residential                   -> 2 lanes x 3.5 m, curbs, sidewalks both sides
+lanes=<n> / width=<m>                 -> copied from the tag          (priority 100)
+amenity=parking                       -> asphalt surface, painted stalls
+leisure=park                          -> grass + seeded trees and benches (asset requests)
+natural=tree                          -> tree request: leafType/genus from tags, height from tag
+barrier=hedge                         -> hedge segments every 2 m along the line
 ```
 
-### Trees and plants (MVP)
+**Why data, at scale:** rules grow with the _kinds_ of things OSM describes (hundreds), while the asset catalog grows with _variety_ (thousands of models). Rules only ever output requests (category + attributes); the catalog selector picks the model. Adding 500 new trees means 500 catalog entries and zero new rules. Rules are indexed by tag key, versioned, and validated by tests.
 
-Where trees go:
+### Where trees go
 
 ```
 natural=tree (node)              -> one tree at that exact spot
-natural=tree_row (way)           -> trees spaced every 8-12 m along the line
+natural=tree_row (way)           -> trees every ~10 m along the line
 natural=wood / landuse=forest    -> filled with trees (seeded scatter)
-yards, parks, empty lawns        -> sparse seeded scatter (fill)
+parks, residential lawns         -> sparse seeded scatter (fill)
 every spot                       -> skipped if on a road, sidewalk or inside a building
 ```
-
-Which tree (asset request, first answer wins):
-
-```
-leaf_type=needleleaved           -> tree, leafType=needleleaved
-genus=Betula                     -> tree, genus=Betula
-leaf_type=broadleaved            -> tree, leafType=broadleaved
-inside a wood with leaf_type     -> copy the wood's leaf_type
-height=<m>                       -> heightM close to the tag
-no tags                          -> tree, leafType=broadleaved (category default)
-size and variety                 -> seeded from the OSM id or rounded global position
-```
-
-Bushes and hedges work the same way (`natural=shrub`, `barrier=hedge` along the line).
 
 ### Clues for unlabelled buildings (`building=yes`)
 

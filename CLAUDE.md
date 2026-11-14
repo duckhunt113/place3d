@@ -42,7 +42,7 @@ apps/web/            @somewhere/web: Vite + TypeScript + three + @dimforge/rapie
   public/assets/     .glb asset kit + catalog.json (asset catalog) + palette.json (colours)
 packages/world/      @somewhere/world: plain TypeScript, engine-free
   src/data/          tile sources (saved files, Overpass), tiling, lat/lon -> metres, cache interface (no storage code)
-  src/decide/        tags > rules > defaults
+  src/decide/        rule engine; rules/*.json = OSM tag rules as data (buildings, roads, areas, objects)
   src/generator/     roads, ground, buildings -> plain mesh data + placements + colliders
   src/assets/        asset catalog types + selector (requirements -> asset ID)
   src/util/          seeded RNG, maths
@@ -120,6 +120,14 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
     - **Asset catalog:** every `.glb` has one entry in `apps/web/public/assets/catalog.json` (ID, file, category, attributes, footprint, collider, triangles, source, licence). Generator, decision and AI code **never hard-code file names**: they ask for requirements (`AssetRequest`, e.g. category `tree`, `leafType: needleleaved`) and the selector in `packages/world/src/assets` picks a matching asset ID with the seeded RNG.
     - **Asset IDs are stable** (lowercase, dotted, e.g. `tree.leafy.oak.m`): never rename or delete one; mark it `deprecated` instead. The catalog has a `version`; a world or room uses one catalog version for everyone, so adding assets never changes existing worlds.
 11. **Scalable by default.** Every design choice (library, data format, storage, API, architecture) must keep working as the project grows: many players, any location worldwide, the server running the same code, and the planned AI prompts, objectives and multiplayer, without a rewrite. Before choosing, ask: does this still work at 1,000× the players or data, for the whole world, and on the server? Shortcuts are fine for the MVP only if they sit behind an interface that can be swapped later, and the matching doc names the scalable replacement. "Scalable" means _can grow without a rewrite_, not _built for scale now_: don't add infrastructure before it's needed.
+12. **Data, not code: rules ask, the catalog answers.** Built to scale to thousands of rules and 10,000+ assets without code changes.
+    - **OSM tag rules are data** in `packages/world/src/decide/rules/*.json` (one file per domain). A small generic engine applies them. Never write tag-specific `if/else` in code; add or change a rule instead. The `osm-tag-rules` skill explains the format.
+    - **Rules output requests, never assets:** a rule says _what kind of thing_ (e.g. `{ category: "tree", want: { leafType: "needleleaved" } }`); the catalog selector picks _which model_. Rules grow with the kinds of things OSM describes (hundreds); the catalog grows with variety (thousands). Adding models never needs new rules.
+    - **Precedence:** a real OSM tag copied with `"@key"` (priority 100) > the most specific matching rule (most `when` keys) > less specific rules > the domain's catch-all (`"*"`). Ties: higher `priority`, then rule `id`.
+    - **Geometry-based rules** use named facts computed in code (`footprintM2`, `insideLanduse`, `shopNodesInside`, …) with thresholds kept in the rule's `where`, never in code.
+    - **Indexed, never scanned:** the engine indexes rules by tag key; the selector indexes the catalog by category (then attributes).
+    - **Versioned and pinned:** rules, catalog and palette each have a `version`; a world or room uses one version of each for everyone.
+    - **Validated by tests:** every rules file is checked (unique ids, known palette names, known catalog categories, no two rules with the same `when` and priority).
 
 ## Testing (Vitest)
 
@@ -131,12 +139,12 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
 - **Assertions:** check real values with tolerances where maths is involved (`toBeCloseTo`), not just "is defined" or "doesn't throw".
 - **Speed:** the whole suite should run in a few seconds; no sleeps or timers.
 - **Web tests:** `apps/web` has no test setup yet. When the first web test is written, add Vitest (`pnpm --filter @somewhere/web add -D vitest`) and a `"test": "vitest run"` script in the same change.
-- **Empty-suite flag:** `packages/world` runs Vitest with `--passWithNoTests` only until its first test exists; remove the flag in the same change that adds that test.
 - **Done means green:** before calling any change finished, run `pnpm lint && pnpm typecheck && pnpm test` and fix any failure. Never delete, skip (`.skip`) or weaken a failing test to make it pass unless the behaviour was intentionally changed, and say so when you do.
 
 ## Working style
 
 - TypeScript `strict`. Keep modules small and data-oriented; put types for world data in `packages/world`.
+- **Rules and catalog changes** need no code: edit `decide/rules/*.json` or `catalog.json`, keep ids stable, run the tests.
 - **Approved libraries for these jobs** (use them; don't hand-roll or add alternatives without recording the reason here):
   - `earcut` (world): triangulate outlines (buildings, lawns, parking lots)
   - `polygon-clipping` (world): clip shapes at tile edges, unions/intersections, overlap checks

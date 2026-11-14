@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "domain": "roads",
+  "note": "OSM tag rules for roads and paths. Width = widthM tag, else lanes x laneWidthM.",
+  "rules": [
+    {
+      "id": "road.any",
+      "when": {
+        "highway": "*"
+      },
+      "then": {
+        "kind": "road",
+        "lanes": 2,
+        "laneWidthM": 3.5,
+        "sidewalks": "none",
+        "curbs": true,
+        "markings": "none",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "id": "road.residential",
+      "when": {
+        "highway": ["residential", "living_street", "unclassified"]
+      },
+      "then": {
+        "kind": "road",
+        "lanes": 2,
+        "laneWidthM": 3.5,
+        "sidewalks": "both",
+        "curbs": true,
+        "markings": "none",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "id": "road.main",
+      "when": {
+        "highway": ["tertiary", "secondary", "primary"]
+      },
+      "then": {
+        "kind": "road",
+        "lanes": 2,
+        "laneWidthM": 3.5,
+        "sidewalks": "both",
+        "curbs": true,
+        "markings": "centre",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "id": "road.service",
+      "when": {
+        "highway": "service"
+      },
+      "then": {
+        "kind": "road",
+        "lanes": 1,
+        "laneWidthM": 4.0,
+        "sidewalks": "none",
+        "curbs": false,
+        "markings": "none",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "id": "road.driveway",
+      "when": {
+        "highway": "service",
+        "service": "driveway"
+      },
+      "then": {
+        "kind": "driveway",
+        "lanes": 1,
+        "laneWidthM": 3.0,
+        "sidewalks": "none",
+        "curbs": false,
+        "markings": "none",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "id": "road.parking-aisle",
+      "when": {
+        "highway": "service",
+        "service": "parking_aisle"
+      },
+      "then": {
+        "kind": "road",
+        "lanes": 2,
+        "laneWidthM": 3.0,
+        "sidewalks": "none",
+        "curbs": false,
+        "markings": "none",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "id": "path.footway",
+      "when": {
+        "highway": ["footway", "path", "pedestrian", "cycleway"]
+      },
+      "then": {
+        "kind": "path",
+        "widthM": 1.8,
+        "curbs": false,
+        "surface": "sidewalk"
+      }
+    },
+    {
+      "id": "tag.lanes",
+      "when": {
+        "highway": "*",
+        "lanes": "*"
+      },
+      "priority": 100,
+      "then": {
+        "lanes": "@lanes"
+      }
+    },
+    {
+      "id": "tag.width",
+      "when": {
+        "highway": "*",
+        "width": "*"
+      },
+      "priority": 100,
+      "then": {
+        "widthM": "@width"
+      }
+    },
+    {
+      "id": "tag.sidewalk",
+      "when": {
+        "highway": "*",
+        "sidewalk": "*"
+      },
+      "priority": 100,
+      "then": {
+        "sidewalks": "@sidewalk"
+      }
+    }
+  ]
+}

@@ -1,0 +1,214 @@
+{
+  "version": 1,
+  "domain": "buildings",
+  "note": "OSM tag rules for buildings. Most specific match wins; priority 100 = copy a real OSM tag (tags always win).",
+  "rules": [
+    {
+      "id": "building.any",
+      "when": {
+        "building": "*"
+      },
+      "then": {
+        "type": "house",
+        "storeys": 2,
+        "roof": "flat",
+        "colour": [
+          "house.beige",
+          "house.tan",
+          "house.white",
+          "house.ochre",
+          "house.grey",
+          "house.sage",
+          "house.blue",
+          "house.brick"
+        ]
+      }
+    },
+    {
+      "id": "building.house",
+      "when": {
+        "building": ["house", "detached", "semidetached_house", "terrace"]
+      },
+      "then": {
+        "type": "house",
+        "storeys": 2,
+        "roof": "flat",
+        "colour": [
+          "house.beige",
+          "house.tan",
+          "house.white",
+          "house.ochre",
+          "house.grey",
+          "house.sage",
+          "house.blue",
+          "house.brick"
+        ]
+      }
+    },
+    {
+      "id": "building.bungalow",
+      "when": {
+        "building": "bungalow"
+      },
+      "then": {
+        "type": "house",
+        "storeys": 1,
+        "roof": "flat",
+        "colour": [
+          "house.beige",
+          "house.tan",
+          "house.white",
+          "house.ochre",
+          "house.grey",
+          "house.sage",
+          "house.blue",
+          "house.brick"
+        ]
+      }
+    },
+    {
+      "id": "building.apartments",
+      "when": {
+        "building": "apartments"
+      },
+      "then": {
+        "type": "apartments",
+        "storeys": 4,
+        "roof": "flat",
+        "colour": ["house.white", "house.grey", "house.beige", "house.brick"]
+      }
+    },
+    {
+      "id": "building.retail",
+      "when": {
+        "building": ["retail", "commercial", "supermarket"]
+      },
+      "then": {
+        "type": "retail",
+        "storeys": 1,
+        "roof": "flat",
+        "colour": ["house.beige", "house.tan", "house.white", "cream"],
+        "shopSigns": true
+      }
+    },
+    {
+      "id": "building.shed",
+      "when": {
+        "building": ["garage", "garages", "shed", "carport"]
+      },
+      "then": {
+        "type": "shed",
+        "storeys": 1,
+        "roof": "flat",
+        "colour": ["house.grey", "house.white"]
+      }
+    },
+    {
+      "id": "building.yes.shops-inside",
+      "when": {
+        "building": "yes"
+      },
+      "where": {
+        "shopNodesInside": {
+          "gte": 1
+        }
+      },
+      "then": {
+        "type": "retail",
+        "storeys": 1,
+        "roof": "flat",
+        "colour": ["house.beige", "house.tan", "house.white", "cream"],
+        "shopSigns": true
+      }
+    },
+    {
+      "id": "building.yes.small-residential",
+      "when": {
+        "building": "yes"
+      },
+      "where": {
+        "footprintM2": {
+          "gte": 30,
+          "lt": 250
+        },
+        "insideLanduse": "residential"
+      },
+      "then": {
+        "type": "house",
+        "storeys": 2,
+        "roof": "flat",
+        "colour": [
+          "house.beige",
+          "house.tan",
+          "house.white",
+          "house.ochre",
+          "house.grey",
+          "house.sage",
+          "house.blue",
+          "house.brick"
+        ]
+      }
+    },
+    {
+      "id": "building.yes.tiny",
+      "when": {
+        "building": "yes"
+      },
+      "where": {
+        "footprintM2": {
+          "lt": 30
+        }
+      },
+      "then": {
+        "type": "shed",
+        "storeys": 1,
+        "roof": "flat",
+        "colour": ["house.grey", "house.white"]
+      }
+    },
+    {
+      "id": "tag.building-levels",
+      "when": {
+        "building": "*",
+        "building:levels": "*"
+      },
+      "priority": 100,
+      "then": {
+        "storeys": "@building:levels"
+      }
+    },
+    {
+      "id": "tag.height",
+      "when": {
+        "building": "*",
+        "height": "*"
+      },
+      "priority": 100,
+      "then": {
+        "heightM": "@height"
+      }
+    },
+    {
+      "id": "tag.building-colour",
+      "when": {
+        "building": "*",
+        "building:colour": "*"
+      },
+      "priority": 100,
+      "then": {
+        "colourHint": "@building:colour"
+      }
+    },
+    {
+      "id": "tag.roof-shape",
+      "when": {
+        "building": "*",
+        "roof:shape": "*"
+      },
+      "priority": 100,
+      "then": {
+        "roof": "@roof:shape"
+      }
+    }
+  ]
+}
