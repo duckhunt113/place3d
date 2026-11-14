@@ -130,8 +130,8 @@ MVP: a small catalog (about 5 trees, a few props, a blank shop sign) and the sel
 `apps/web/public/assets/palette.json` lists every colour by **name** (e.g. `foliage.light`, `asphalt`, `house.beige`) with its hex value and its cell on the palette grid. It is the single source of truth.
 
 - **Models refer to colours by name.** Each face uses a material named `pal:<colour name>`. Models never depend on where a colour sits on the image.
-- **`palette.png` is generated** from `palette.json`: pure colour squares, no labels or grid lines (anything drawn there would show up on models). A separate labelled preview can be generated for people; it is not a game asset.
-- **Layout:** 256×256 px to start, a 16×16 grid of 16 px cells, one category per row (foliage, nature, streets, house walls, roofs and trim, signs, props), spare slots in every row and empty rows for the future. Models sample cell centres so colours don't bleed.
+- **`palette.png` is generated** from `palette.json` by `pnpm palette` (`scripts/build-palette.mjs`): pure colour squares, no labels or grid lines (anything drawn there would show up on models). The script refuses bad names, bad hex values and clashing cells, and also writes `docs/palette-preview.html`, a labelled view for people that is not a game asset.
+- **Layout:** 512×512 px, a 16×16 grid of 32 px cells, one category per row (foliage, nature, streets, house walls, roofs and trim, signs, props), spare slots in every row and empty rows for the future. Models sample cell centres so colours don't bleed.
 - **MVP:** the renderer swaps each `pal:` material for its palette colour at load time. Simple, and fine for a small kit.
 - **When the kit grows:** an asset build step (`gltf-transform`) bakes each `pal:` name into UVs on the single shared palette material. To add colours, grow the grid or rearrange it, update `palette.json` and re-run the step; every model is re-mapped automatically.
 - **Generated surfaces** (roads, lawns, walls) take vertex colours from the same names.

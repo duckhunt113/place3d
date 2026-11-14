@@ -47,6 +47,7 @@ packages/world/      @somewhere/world: plain TypeScript, engine-free
   src/assets/        asset catalog types + selector (requirements -> asset ID)
   src/util/          seeded RNG, maths
 apps/server/         (later) Colyseus rooms + server-side fetch, decisions and tile storage
+scripts/             project scripts (build-palette.mjs)
 docs/                design docs: read the relevant one before big changes
 ```
 
@@ -59,6 +60,7 @@ pnpm test                                  # Vitest in all packages
 pnpm typecheck                             # TypeScript checks, each package with its own settings
 pnpm lint                                  # Biome: lint + format check (no changes)
 pnpm fix                                   # Biome: auto-fix lint issues and format files
+pnpm palette                               # regenerate palette.png + docs/palette-preview.html from palette.json
 pnpm build
 pnpm --filter @somewhere/web add <lib>
 pnpm --filter @somewhere/world add <lib>
@@ -105,7 +107,7 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
 10. **Asset conventions:**
     - `.glb`; follow the `art-style` skill (faceted foliage, smooth everything else)
     - **Colours by name:** `apps/web/public/assets/palette.json` is the single source of truth for colours (name → hex + grid cell, plus a `version`). Models colour their faces with materials named `pal:<colour name>` (e.g. `pal:foliage.light`), never by a fixed position on the palette image. Generated surfaces take their vertex colours from the same names. Colour names are never renamed or removed; positions may move.
-    - `palette.png` is **generated** from `palette.json` (pure colour squares, no labels or lines; 16×16 grid of 16 px cells to start, one category per row with spare slots). Never edit it by hand.
+    - `palette.png` is **generated** from `palette.json` by `pnpm palette` (pure colour squares, no labels or lines; 512×512, a 16×16 grid of 32 px cells, one category per row with spare slots). Never edit it by hand; change `palette.json` and re-run. The script also validates names, hex values and cells, and writes a labelled `docs/palette-preview.html`.
     - **MVP:** the renderer swaps each `pal:` material for its palette colour at load time. **When the kit grows:** an asset build step (`gltf-transform`) bakes `pal:` names into UVs on the one shared palette material, so the palette can grow or be rearranged by re-running it. Restyle palettes (e.g. winter) keep the same names. A world or room uses one palette version for everyone.
     - origin at base centre, facing +Z (glTF default), 1 unit = 1 m
     - `.glb` files in `apps/web/public/assets/` are the source of truth; no source art (`.blend` etc.) in the repo

@@ -110,7 +110,7 @@ type MeshData = {
 type ColorName = string; // stable, e.g. "foliage.light"; never renamed or removed
 type Palette = {
   version: number;
-  grid: { cols: number; rows: number; cellPx: number }; // start: 16 x 16, 16 px
+  grid: { cols: number; rows: number; cellPx: number }; // start: 16 x 16, 32 px = 512 x 512
   colors: Record<ColorName, { hex: string; cell: [number, number] }>; // cell = [col, row]; may move
 };
 
