@@ -29,7 +29,7 @@ Do **not** facet buildings or roads, and do **not** make trees smooth.
 
 ## Trees and plants
 
-- **Canopy:** a cluster of 4–8 rounded faceted blobs (icosphere detail 1–2, slightly squashed and jittered), merged into one mesh. Lighter green on top and sun side, darker underneath. Vertex colours, `flatShading: true`.
+- **Canopy:** a cluster of 4–8 rounded faceted blobs (icosphere detail 1–2, slightly squashed and jittered), merged into one mesh. Lighter green on top and sun side, darker underneath: colour faces with `pal:foliage.light` / `pal:foliage.mid` / `pal:foliage.dark` materials, `flatShading: true`.
 - **Trunk:** smooth, brown, gently tapering; on large trees, 2–3 visible branches splitting into the canopy. The trunk shows clearly below the canopy so you can walk under it.
 - **Shapes:** leafy round (most common), tall narrow, umbrella pine (flat wide top on a tall bare trunk), small ornamental. Vary size, rotation and tint per tree using the seeded RNG.
 - **Bushes and hedges:** same faceted blobs; hedges are long rounded boxes of blobs, darker green.
@@ -86,7 +86,7 @@ Tune by eye against the reference images, then update these numbers here.
 
 ## Palette (starting hex values)
 
-Put these on the shared `palette.png` and use them for generated surfaces. Pick from the palette instead of inventing colours.
+These are the starting values for `apps/web/public/assets/palette.json`, the single source of truth for colours. Always use colours **by palette name**: models colour faces with materials named `pal:<name>` (e.g. `pal:foliage.light`), and generated surfaces use the same names. Never use a colour that isn't in the palette, and never map faces to a fixed spot on `palette.png` (it's generated and its layout may change). Palette names follow the "Use" column, e.g. `foliage.light`, `asphalt`, `roof.terracotta`.
 
 | Use                                     | Hex                                           |
 | --------------------------------------- | --------------------------------------------- |
@@ -116,7 +116,7 @@ The references also show cars, utility poles with wires, street lights and detai
 ## Checklist before calling visual work done
 
 1. Trees faceted, everything else smooth?
-2. Colours taken from the palette?
+2. Colours taken from the palette, by name (`pal:` materials)?
 3. Warm sun, soft blue-grey shadows, dappled tree shadows visible?
 4. Curbs, sidewalk joints and road markings present and crisp?
 5. Signs readable, names only, no real logos?

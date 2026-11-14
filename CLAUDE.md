@@ -39,7 +39,7 @@ apps/web/            @somewhere/web: Vite + TypeScript + three + @dimforge/rapie
   src/render/        the ONLY place allowed to import three
   src/physics/       Rapier world + colliders built from generator data
   src/player/        first-person controls, camera, player capsule
-  public/assets/     .glb asset kit + catalog.json (the asset catalog)
+  public/assets/     .glb asset kit + catalog.json (asset catalog) + palette.json (colours)
 packages/world/      @somewhere/world: plain TypeScript, engine-free
   src/data/          tile sources (saved files, Overpass), tiling, lat/lon -> metres, cache interface (no storage code)
   src/decide/        tags > rules > defaults
@@ -103,7 +103,10 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
    - Private homes stay generic; only public places get detailed.
 9. **Kid-safe.** Anything user-typed or AI-generated must be filtered (relevant once prompts or chat exist).
 10. **Asset conventions:**
-    - `.glb`, one shared palette texture; follow the `art-style` skill (faceted foliage, smooth everything else)
+    - `.glb`; follow the `art-style` skill (faceted foliage, smooth everything else)
+    - **Colours by name:** `apps/web/public/assets/palette.json` is the single source of truth for colours (name → hex + grid cell, plus a `version`). Models colour their faces with materials named `pal:<colour name>` (e.g. `pal:foliage.light`), never by a fixed position on the palette image. Generated surfaces take their vertex colours from the same names. Colour names are never renamed or removed; positions may move.
+    - `palette.png` is **generated** from `palette.json` (pure colour squares, no labels or lines; 16×16 grid of 16 px cells to start, one category per row with spare slots). Never edit it by hand.
+    - **MVP:** the renderer swaps each `pal:` material for its palette colour at load time. **When the kit grows:** an asset build step (`gltf-transform`) bakes `pal:` names into UVs on the one shared palette material, so the palette can grow or be rearranged by re-running it. Restyle palettes (e.g. winter) keep the same names. A world or room uses one palette version for everyone.
     - origin at base centre, facing +Z (glTF default), 1 unit = 1 m
     - `.glb` files in `apps/web/public/assets/` are the source of truth; no source art (`.blend` etc.) in the repo
     - only use third-party models with a licence that allows use in the game (CC0 preferred)

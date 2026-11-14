@@ -12,7 +12,7 @@ somewhere/
       src/render/        the ONLY place that imports three.js
       src/physics/       Rapier world + colliders from generator data
       src/player/        first-person camera, controls, player capsule
-      public/assets/     .glb asset kit + catalog.json
+      public/assets/     .glb asset kit + catalog.json + palette.json
     server/              (later) Colyseus rooms + server-side fetch, decisions, tile storage
   packages/
     world/               plain TypeScript, NO three.js, NO DOM
@@ -102,6 +102,16 @@ type MeshData = {
   uvs: Float32Array;
   colors?: Float32Array; // vertex colours (rgb), e.g. foliage shading
   indices: Uint32Array;
+};
+
+// Palette (apps/web/public/assets/palette.json): the single source of truth for colours.
+// Models use materials named "pal:<ColorName>"; generated meshes use the same names
+// for vertex colours. palette.png is generated from this file.
+type ColorName = string; // stable, e.g. "foliage.light"; never renamed or removed
+type Palette = {
+  version: number;
+  grid: { cols: number; rows: number; cellPx: number }; // start: 16 x 16, 16 px
+  colors: Record<ColorName, { hex: string; cell: [number, number] }>; // cell = [col, row]; may move
 };
 
 // Asset catalog (apps/web/public/assets/catalog.json). Assets are data, not code:

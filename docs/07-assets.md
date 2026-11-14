@@ -125,6 +125,20 @@ MVP subset: about 5 trees and a few props. Buildings are plain boxes plus a name
 
 MVP: a small catalog (about 5 trees, a few props, a blank shop sign) and the selector from day one.
 
+## Palette: colours by name
+
+`apps/web/public/assets/palette.json` lists every colour by **name** (e.g. `foliage.light`, `asphalt`, `house.beige`) with its hex value and its cell on the palette grid. It is the single source of truth.
+
+- **Models refer to colours by name.** Each face uses a material named `pal:<colour name>`. Models never depend on where a colour sits on the image.
+- **`palette.png` is generated** from `palette.json`: pure colour squares, no labels or grid lines (anything drawn there would show up on models). A separate labelled preview can be generated for people; it is not a game asset.
+- **Layout:** 256×256 px to start, a 16×16 grid of 16 px cells, one category per row (foliage, nature, streets, house walls, roofs and trim, signs, props), spare slots in every row and empty rows for the future. Models sample cell centres so colours don't bleed.
+- **MVP:** the renderer swaps each `pal:` material for its palette colour at load time. Simple, and fine for a small kit.
+- **When the kit grows:** an asset build step (`gltf-transform`) bakes each `pal:` name into UVs on the single shared palette material. To add colours, grow the grid or rearrange it, update `palette.json` and re-run the step; every model is re-mapped automatically.
+- **Generated surfaces** (roads, lawns, walls) take vertex colours from the same names.
+- **Never rename or remove a colour name.** Changing a colour's shade is fine.
+- **Restyles:** variant palettes (e.g. `palette.winter.json`) use the same names and layout, so every model works with any of them. The palette has a `version`; a world or room uses one version for everyone.
+- **Variation without new colours:** use the placement `tint` before adding near-duplicate colours, and keep the palette limited so the look stays cohesive.
+
 ## Placement: code decides where pre-made items go
 
 - **Kit pieces onto wall sections**, chosen using the facade and court profiles.
@@ -138,7 +152,7 @@ MVP: a small catalog (about 5 trees, a few props, a blank shop sign) and the sel
 ## Style rules
 
 - **Two kinds of surface:** tree canopies, bushes, hedges and clouds are faceted low-poly (flat-shaded); buildings, roads, signs and props are smooth and simplified. Full rules, palette and reference images: `.claude/skills/art-style/`.
-- **One shared colour palette texture (atlas)** for all assets. Everything matches, and nearly everything shares one material.
+- **Colours come from the palette, by name** (see "Palette" below). Everything matches, and nearly everything shares one material.
 - **Low-poly budgets:** trees 300–800 triangles; props 50–300; wall pieces under 200.
 - **Real scale:** 1 unit = 1 metre; origin at the base centre; all assets face +Z (the glTF default).
 - **Reference sizes:** lane 3.5 m, curb 0.15 m, door 2.1 m, one storey 3 m, eye height 1.7 m.
