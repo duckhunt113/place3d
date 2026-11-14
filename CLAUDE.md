@@ -61,6 +61,7 @@ pnpm typecheck                             # TypeScript checks, each package wit
 pnpm lint                                  # Biome: lint + format check (no changes)
 pnpm fix                                   # Biome: auto-fix lint issues and format files
 pnpm palette                               # regenerate palette.png + docs/palette-preview.html from palette.json
+pnpm palette:check                         # validate palette.json and check palette.png is up to date (writes nothing)
 pnpm build
 pnpm --filter @somewhere/web add <lib>
 pnpm --filter @somewhere/world add <lib>
@@ -86,7 +87,8 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
    - Decisions are keyed by OSM ID, never stored per tile. OSM IDs are always type-qualified (`node/1`, `way/123`, `relation/9`), because OSM numbers each type separately.
    - Saved tiles carry a `version` and a timestamp.
    - **Map data only comes through the `TileSource` interface** (`packages/world/src/data`). `getTile(id)` returns that tile's OSM elements in one normalized format (Overpass `out geom` JSON), including everything that _touches_ the tile, not only what lies inside, plus the source name and fetch time. Nothing else calls Overpass or any other map service.
-   - **Sources by phase:** saved files (MVP step 1; the same files are the test fixtures) → live Overpass (any location, during development) → pre-built tiles in object storage behind a CDN (launch). Don't self-host Overpass.
+   - **Sources by phase:** saved files (MVP step 1; the same files are the test fixtures) → live Overpass (development) → beta: the server fetches each missing tile from Overpass **once** and stores it → launch: pre-built tiles in object storage behind a CDN, with a builder for tiles that don't exist yet.
+   - **Never put Overpass or any live query service in front of players.** A self-hosted query service (Overpass, or PostGIS loaded from the OSM planet file) is allowed only as the back-end builder for missing tiles; its load grows with new places visited, not with players.
    - Everyone in a room gets tiles from the same source and version.
 5. **Decision order:** OSM tag > rules > (later: trained model > LLM) > safe default. OSM tags always win.
 6. **If the shape comes from the map, generate it. If it's the same everywhere, use a pre-made `.glb` asset.** AI (later) only describes things as parameters; code always builds the geometry.

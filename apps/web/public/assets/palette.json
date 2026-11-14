@@ -1,54 +1,190 @@
 {
   "version": 1,
-  "grid": { "cols": 16, "rows": 16, "cellPx": 32 },
+  "grid": {
+    "cols": 16,
+    "rows": 16,
+    "cellPx": 32
+  },
   "colors": {
-    "foliage.light": { "hex": "#9BC34A", "cell": [0, 0] },
-    "foliage.mid": { "hex": "#6E9E2E", "cell": [1, 0] },
-    "foliage.dark": { "hex": "#4A7A22", "cell": [2, 0] },
-    "hedge": { "hex": "#4F8A2A", "cell": [3, 0] },
-    "trunk": { "hex": "#7A4E2D", "cell": [4, 0] },
-    "trunk.shade": { "hex": "#5A3820", "cell": [5, 0] },
-
-    "grass": { "hex": "#7DB83A", "cell": [0, 1] },
-    "grass.shade": { "hex": "#5E9A2A", "cell": [1, 1] },
-    "water": { "hex": "#4FA3D9", "cell": [2, 1] },
-    "cloud": { "hex": "#FFFFFF", "cell": [3, 1] },
-    "cloud.shade": { "hex": "#DCE6F5", "cell": [4, 1] },
-
-    "asphalt": { "hex": "#55545A", "cell": [0, 2] },
-    "road.white": { "hex": "#F2F2EE", "cell": [1, 2] },
-    "road.yellow": { "hex": "#F2B530", "cell": [2, 2] },
-    "sidewalk": { "hex": "#D9D2C5", "cell": [3, 2] },
-    "sidewalk.joint": { "hex": "#BDB5A8", "cell": [4, 2] },
-    "curb": { "hex": "#CFCAC0", "cell": [5, 2] },
-
-    "house.beige": { "hex": "#D8C29A", "cell": [0, 3] },
-    "house.tan": { "hex": "#C9A878", "cell": [1, 3] },
-    "house.white": { "hex": "#F1EFEA", "cell": [2, 3] },
-    "house.ochre": { "hex": "#E6B85C", "cell": [3, 3] },
-    "house.grey": { "hex": "#C9CCCF", "cell": [4, 3] },
-    "house.sage": { "hex": "#A9B892", "cell": [5, 3] },
-    "house.blue": { "hex": "#A9C3D6", "cell": [6, 3] },
-    "house.brick": { "hex": "#B8664A", "cell": [7, 3] },
-
-    "roof.terracotta": { "hex": "#D9622B", "cell": [0, 4] },
-    "roof.terracotta.shade": { "hex": "#B44A20", "cell": [1, 4] },
-    "roof.dark": { "hex": "#5B5F66", "cell": [2, 4] },
-    "wall.base": { "hex": "#BEB8AC", "cell": [3, 4] },
-    "cream": { "hex": "#EFE6D2", "cell": [4, 4] },
-    "charcoal": { "hex": "#3A3B3F", "cell": [5, 4] },
-    "storefront.navy": { "hex": "#23397A", "cell": [6, 4] },
-    "glass": { "hex": "#2E3B47", "cell": [7, 4] },
-
-    "sign.red": { "hex": "#C8372D", "cell": [0, 5] },
-    "sign.green": { "hex": "#6FA83A", "cell": [1, 5] },
-    "sign.teal": { "hex": "#2F7F8C", "cell": [2, 5] },
-    "sign.navy": { "hex": "#1F3F8F", "cell": [3, 5] },
-    "sign.orange": { "hex": "#E07B2E", "cell": [4, 5] },
-
-    "prop.red": { "hex": "#D23A2E", "cell": [0, 6] },
-    "prop.wood": { "hex": "#A0703F", "cell": [1, 6] },
-    "prop.green": { "hex": "#3F6B3A", "cell": [2, 6] },
-    "prop.metal": { "hex": "#8A8D91", "cell": [3, 6] }
+    "foliage.light": {
+      "hex": "#9BC34A",
+      "cell": [0, 0]
+    },
+    "foliage.mid": {
+      "hex": "#6E9E2E",
+      "cell": [1, 0]
+    },
+    "foliage.dark": {
+      "hex": "#4A7A22",
+      "cell": [2, 0]
+    },
+    "hedge": {
+      "hex": "#4F8A2A",
+      "cell": [3, 0]
+    },
+    "trunk": {
+      "hex": "#7A4E2D",
+      "cell": [4, 0]
+    },
+    "trunk.shade": {
+      "hex": "#5A3820",
+      "cell": [5, 0]
+    },
+    "grass": {
+      "hex": "#7DB83A",
+      "cell": [0, 1]
+    },
+    "grass.shade": {
+      "hex": "#5E9A2A",
+      "cell": [1, 1]
+    },
+    "water": {
+      "hex": "#4FA3D9",
+      "cell": [2, 1]
+    },
+    "cloud": {
+      "hex": "#FFFFFF",
+      "cell": [3, 1]
+    },
+    "cloud.shade": {
+      "hex": "#DCE6F5",
+      "cell": [4, 1]
+    },
+    "sand": {
+      "hex": "#E6D3A3",
+      "cell": [5, 1]
+    },
+    "asphalt": {
+      "hex": "#55545A",
+      "cell": [0, 2]
+    },
+    "road.white": {
+      "hex": "#F2F2EE",
+      "cell": [1, 2]
+    },
+    "road.yellow": {
+      "hex": "#F2B530",
+      "cell": [2, 2]
+    },
+    "sidewalk": {
+      "hex": "#D9D2C5",
+      "cell": [3, 2]
+    },
+    "sidewalk.joint": {
+      "hex": "#BDB5A8",
+      "cell": [4, 2]
+    },
+    "curb": {
+      "hex": "#CFCAC0",
+      "cell": [5, 2]
+    },
+    "paving": {
+      "hex": "#C4B8A6",
+      "cell": [6, 2]
+    },
+    "house.beige": {
+      "hex": "#D8C29A",
+      "cell": [0, 3]
+    },
+    "house.tan": {
+      "hex": "#C9A878",
+      "cell": [1, 3]
+    },
+    "house.white": {
+      "hex": "#F1EFEA",
+      "cell": [2, 3]
+    },
+    "house.ochre": {
+      "hex": "#E6B85C",
+      "cell": [3, 3]
+    },
+    "house.grey": {
+      "hex": "#C9CCCF",
+      "cell": [4, 3]
+    },
+    "house.sage": {
+      "hex": "#A9B892",
+      "cell": [5, 3]
+    },
+    "house.blue": {
+      "hex": "#A9C3D6",
+      "cell": [6, 3]
+    },
+    "house.brick": {
+      "hex": "#B8664A",
+      "cell": [7, 3]
+    },
+    "roof.terracotta": {
+      "hex": "#D9622B",
+      "cell": [0, 4]
+    },
+    "roof.terracotta.shade": {
+      "hex": "#B44A20",
+      "cell": [1, 4]
+    },
+    "roof.dark": {
+      "hex": "#5B5F66",
+      "cell": [2, 4]
+    },
+    "wall.base": {
+      "hex": "#BEB8AC",
+      "cell": [3, 4]
+    },
+    "cream": {
+      "hex": "#EFE6D2",
+      "cell": [4, 4]
+    },
+    "charcoal": {
+      "hex": "#3A3B3F",
+      "cell": [5, 4]
+    },
+    "storefront.navy": {
+      "hex": "#23397A",
+      "cell": [6, 4]
+    },
+    "glass": {
+      "hex": "#2E3B47",
+      "cell": [7, 4]
+    },
+    "roof.shingle": {
+      "hex": "#6E6A66",
+      "cell": [8, 4]
+    },
+    "sign.red": {
+      "hex": "#C8372D",
+      "cell": [0, 5]
+    },
+    "sign.green": {
+      "hex": "#6FA83A",
+      "cell": [1, 5]
+    },
+    "sign.teal": {
+      "hex": "#2F7F8C",
+      "cell": [2, 5]
+    },
+    "sign.navy": {
+      "hex": "#1F3F8F",
+      "cell": [3, 5]
+    },
+    "sign.orange": {
+      "hex": "#E07B2E",
+      "cell": [4, 5]
+    },
+    "prop.red": {
+      "hex": "#D23A2E",
+      "cell": [0, 6]
+    },
+    "prop.wood": {
+      "hex": "#A0703F",
+      "cell": [1, 6]
+    },
+    "prop.green": {
+      "hex": "#3F6B3A",
+      "cell": [2, 6]
+    },
+    "prop.metal": {
+      "hex": "#8A8D91",
+      "cell": [3, 6]
+    }
   }
 }

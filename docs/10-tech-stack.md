@@ -27,15 +27,15 @@
 
 ## Data
 
-| Source                                                                                                    | When      |
-| --------------------------------------------------------------------------------------------------------- | --------- |
-| Saved tiles (Albertson Crescent), then OpenStreetMap via Overpass API, through the `TileSource` interface | MVP       |
-| Tile cache: interface in `@somewhere/world`, IndexedDB in the browser (server storage later)              | MVP       |
-| Elevation tiles                                                                                           | Later     |
-| Mapillary (+ Mapilio / KartaView / Panoramax)                                                             | Later     |
-| Licensed aerial imagery, city tree data, LiDAR                                                            | Later     |
-| Open-Meteo weather                                                                                        | Optional  |
-| Pre-built tiles from Geofabrik extracts, in object storage (e.g. Cloudflare R2) + CDN                     | At launch |
+| Source                                                                                                                                                                                     | When          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
+| Saved tiles (Albertson Crescent), then OpenStreetMap via Overpass API, through the `TileSource` interface                                                                                  | MVP           |
+| Tile cache: interface in `@somewhere/world`, IndexedDB in the browser (server storage later)                                                                                               | MVP           |
+| Elevation tiles                                                                                                                                                                            | Later         |
+| Mapillary (+ Mapilio / KartaView / Panoramax)                                                                                                                                              | Later         |
+| Licensed aerial imagery, city tree data, LiDAR                                                                                                                                             | Later         |
+| Open-Meteo weather                                                                                                                                                                         | Optional      |
+| Beta: server caches tiles fetched once from Overpass. Launch: builder (self-hosted Overpass or PostGIS from the OSM planet) + pre-built tiles in object storage (e.g. Cloudflare R2) + CDN | Beta / launch |
 
 ## World building
 

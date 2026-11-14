@@ -1,5 +1,4 @@
 ---
-
 name: repo-audit
 description: Use when asked to check, scan, audit or review the Somewhere repo for inconsistencies, contradictions, stale text, bad conventions or rule violations, and report findings (without changing anything unless asked).
 ---
@@ -20,7 +19,7 @@ Also check `git status` and `git log --oneline -5` (uncommitted work, unpushed c
 pnpm lint
 pnpm typecheck
 pnpm test
-pnpm palette        # also validates palette.json
+pnpm palette:check  # validates palette.json and checks palette.png is up to date; writes nothing
 ```
 
 Record any failure as a finding (with the exact error).
@@ -50,8 +49,18 @@ Record any failure as a finding (with the exact error).
 
 - `catalog.json`: valid, every `file` exists, IDs unique and lowercase-dotted, every entry has source + licence, no deleted IDs (only `deprecated`).
 - Every `.glb` in `apps/web/public/assets/` has a catalog entry.
-- `palette.json`: valid (`pnpm palette` passes); `palette.png` is up to date with it (re-run and check `git status` shows no change).
+- `palette.json`: valid and `palette.png` + `docs/palette-preview.html` up to date (`pnpm palette:check` passes). Never run `pnpm palette` during an audit: it rewrites files.
 - Every `pal:<name>` material used by models exists in `palette.json`; palette variants only use known names.
+
+### Plan and docs vs docs
+- Build order in `docs/02-mvp.md` matches the MVP subset in `docs/04-pipeline.md` and the "done when".
+- MVP scope agrees across `CLAUDE.md`, `02-mvp.md`, `04-pipeline.md`, `08-missing-data.md` and `12-roadmap.md` (nothing in one doc's MVP that another excludes).
+- The AI order in `docs/06-decisions-and-ai.md` matches the phases in `docs/12-roadmap.md`.
+- The data plan by phase in `docs/05-data-sources.md` matches `CLAUDE.md` hard rule 4, `docs/10-tech-stack.md` and the roadmap's launch section.
+- `docs/10-tech-stack.md` "When" columns match when the roadmap introduces each tool.
+- Every roadmap phase's prerequisites come before it (e.g. photo profiles need kit pieces and a profiles table first).
+- Each concept is described the same way everywhere it appears (e.g. whether something is generated or a model; where coordinates are converted; freshness intervals).
+- Everything the docs say is in the palette or catalog actually exists there (e.g. surface colours listed in `docs/07-assets.md`).
 
 ### Configs and tooling
 

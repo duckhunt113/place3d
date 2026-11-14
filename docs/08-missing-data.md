@@ -44,6 +44,6 @@ Supporting the tag gives _a_ basketball court. Making it look like _that_ court 
 
 ## MVP
 
-- Support the common tags as plain generated surfaces: courts and fields (coloured surface, lines if easy), playgrounds (ground surface only). Hoops, nets, goals and play equipment are kit pieces and come in v0.2.
+- Courts, fields and playgrounds are **not** in the MVP; they come in v0.2 (coloured surfaces, lines and kit pieces). In the MVP they show as plain ground.
 - Generic filler in empty parks.
 - Fix your test area by editing OSM directly.

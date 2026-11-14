@@ -27,7 +27,7 @@ All map data comes through the `TileSource` interface (see [03-architecture.md](
 
 **3. Prepare**
 
-- Convert lat/lon to local metres (one shared world grid, so tiles line up).
+- Keep coordinates as lat/lon: stored tiles never contain local metres (see `CLAUDE.md`, hard rule 3).
 - Fix broken shapes and remove duplicates.
 - Sort features into roads, buildings, areas, points and lines.
 - Assign each building to one **owner tile**: the tile containing its centre.
@@ -64,6 +64,7 @@ The tiles are sent to every player in the room. Everyone gets the same files, so
 **7. Generate base** (per tile)
 
 - Terrain from elevation (later).
+- Project the tile's features from lat/lon to local metres, using the region origin.
 - Ground areas: lawns, parks, parking lots, water.
 - Roads, intersections, curbs, sidewalks, driveways.
 - Building walls and roofs from footprints.
@@ -71,6 +72,7 @@ The tiles are sent to every player in the room. Everyone gets the same files, so
 **8. Place assets**
 
 - Split walls into 3–4 m sections and fill them with kit pieces using the facade profile: storefronts, doors, windows, pillars, signs with real names. This comes later; the MVP uses plain boxes plus a name sign.
+- Every pre-made item is chosen through the **asset catalog**: decisions produce requirements (an `AssetRequest`, e.g. a needleleaved tree about 12 m tall), and the selector picks an asset ID with the seeded RNG. Code never names a model file (see [07-assets.md](07-assets.md)).
 - Put mapped items at their exact spots: trees, signs, benches.
 - Rule-based items are **seeded by global position** (rounded Web Mercator coordinates, not local x/z), so they line up across tiles:
   - poles every 40 m
@@ -127,7 +129,7 @@ The tiles are sent to every player in the room. Everyone gets the same files, so
 
 **Freshness and safety**
 
-- Each tile has a version and a timestamp. Regenerate tiles that are old (more than a few months) or when the generator improves.
+- Each tile has a version and a timestamp. Rebuild a tile when its OSM data changes (pre-built tiles are refreshed weekly; see [05-data-sources.md](05-data-sources.md)) or when the tile format or generator version changes.
 - If two rooms or requests ask for the same missing tile at once, generate it once and make the other wait.
 - If one tile fails, still send the rest. Show the failed tile as plain ground with a loading note, and retry.
 

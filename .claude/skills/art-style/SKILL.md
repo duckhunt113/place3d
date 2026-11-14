@@ -1,5 +1,4 @@
 ---
-
 name: art-style
 description: Use for anything visual in Somewhere - making or editing .glb assets, choosing colours or materials for generated roads, ground and buildings, setting up lighting, sky, shadows or fog, styling trees, signs or props, or checking whether a screenshot matches the target look.
 ---
@@ -56,7 +55,7 @@ Do **not** facet buildings or roads, and do **not** make trees smooth.
 ## Signs
 
 - Big, bold, high-contrast **sign boards** with the real shop **name**, in our own clean sans-serif or slab font. Readable from across the parking lot.
-- Board colours from the palette (cream, navy, red, green, teal) with white or dark text.
+- Board colours from the palette (`sign.red`, `sign.green`, `sign.teal`, `sign.navy`, `sign.orange`, `cream`) with white or dark text.
 - **Never copy real logos.** Names only, plus at most a simple generic icon (a leaf, a cart) drawn in our style.
 - Street furniture signs (stop, street names) are standard shapes with clean flat colours.
 
@@ -84,30 +83,15 @@ scene.fog = new THREE.Fog(0xcfe3f5, 120, 450);
 
 Tune by eye against the reference images, then update these numbers here.
 
-## Palette (starting hex values)
+## Palette
 
-These are the starting values for `apps/web/public/assets/palette.json`, the single source of truth for colours. Always use colours **by palette name**: models colour faces with materials named `pal:<name>` (e.g. `pal:foliage.light`), and generated surfaces use the same names. Never use a colour that isn't in the palette, and never map faces to a fixed spot on `palette.png` (it's generated and its layout may change). Palette names follow the "Use" column, e.g. `foliage.light`, `asphalt`, `roof.terracotta`.
+All colours come from `apps/web/public/assets/palette.json` (names, hex values, grid cells), the single source of truth. See them labelled in `docs/palette-preview.html`.
 
-| Use                                     | Hex                                           |
-| --------------------------------------- | --------------------------------------------- |
-| Sky top / horizon                       | `#5B9BE6` / `#A9CDF2`                         |
-| Cloud / cloud shade                     | `#FFFFFF` / `#DCE6F5`                         |
-| Foliage light / mid / dark              | `#9BC34A` / `#6E9E2E` / `#4A7A22`             |
-| Hedge                                   | `#4F8A2A`                                     |
-| Trunk / trunk shade                     | `#7A4E2D` / `#5A3820`                         |
-| Grass / grass shade                     | `#7DB83A` / `#5E9A2A`                         |
-| Asphalt                                 | `#55545A`                                     |
-| Road white / centre yellow              | `#F2F2EE` / `#F2B530`                         |
-| Sidewalk / joints                       | `#D9D2C5` / `#BDB5A8`                         |
-| Curb / wall base band                   | `#CFCAC0` / `#BEB8AC`                         |
-| Roof terracotta / shade                 | `#D9622B` / `#B44A20`                         |
-| Stucco beige / tan                      | `#D8C29A` / `#C9A878`                         |
-| Ochre wall / white render               | `#E6B85C` / `#F1EFEA`                         |
-| Cream trim                              | `#EFE6D2`                                     |
-| Charcoal (caps, frames, poles)          | `#3A3B3F`                                     |
-| Storefront navy                         | `#23397A`                                     |
-| Window glass                            | `#2E3B47`                                     |
-| Sign accents: red / green / teal / navy | `#C8372D` / `#6FA83A` / `#2F7F8C` / `#1F3F8F` |
+- **Use colours by name only.** Models colour faces with materials named `pal:<name>` (e.g. `pal:foliage.light`, `pal:roof.terracotta`); generated surfaces use the same names. Never map faces to a fixed spot on `palette.png` (it's generated, and its layout may change).
+- **Never invent a colour.** If a needed colour is missing, add a named entry to `palette.json` in its category row and run `pnpm palette`.
+- **Groups:** foliage and trunks, nature (grass, water, sand, clouds), streets (asphalt, markings, sidewalk, paving, curb), house walls, roofs and trim (terracotta, shingle, cream, charcoal, storefront navy, glass), sign colours, prop colours.
+- **Sky colours** are not in the palette; the sky code uses them directly: top `#5B9BE6`, horizon `#A9CDF2`.
+- For variety, prefer a placement `tint` over adding near-duplicate colours.
 
 ## Scope reminder
 

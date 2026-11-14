@@ -13,7 +13,7 @@ Coordinates in, a 300 m stylized area out, walking around it in first person. Ta
 - Terrain from elevation.
 - Building kit pieces: storefront bays, windows, doors, pillars, awnings, proper roofs (straight skeleton).
 - Utility poles and wires, street lights, street-name signs, more props.
-- Courts, fields and playgrounds with kit pieces.
+- Courts, fields and playgrounds: coloured surfaces, lines and kit pieces (hoops, nets, goals, play equipment), with their colours added to the palette.
 - Tile streaming as you walk (bigger areas), with an origin shift when crossing into a new region.
 - Quality presets; phone testing.
 
@@ -48,7 +48,8 @@ Coordinates in, a 300 m stylized area out, walking around it in first person. Ta
 
 ## Launch readiness (in parallel from v0.3)
 
-- Pre-built tiles: a script cuts Geofabrik extracts into our tile format; stored in object storage behind a CDN, rebuilt regularly, missing tiles built on first request.
+- Beta: the server fetches each missing tile from public Overpass once and stores it.
+- Launch: a builder server with the OSM planet data (self-hosted Overpass or PostGIS) builds missing tiles; popular regions pre-built; tiles in object storage behind a CDN, refreshed weekly (see [05-data-sources.md](05-data-sources.md)).
 - Hosting: static web app plus game/tile server plus storage.
 - Attribution screen (OSM, Mapillary, others).
 - Mobile controls.

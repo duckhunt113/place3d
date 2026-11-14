@@ -47,5 +47,6 @@ openstreetmap.org → zoom in → "Query features" tool (cursor with a question 
 - Claude plugins: **parallax-threejs** (Three.js debugging + visual regression), **Render** (hosting, later)
 - Project skills live in `.claude/skills/`:
   1. art style guide: done (`.claude/skills/art-style/`)
-  2. OSM tag rules: to write
-  3. project conventions: to write
+  2. repo audit: done (`.claude/skills/repo-audit/`)
+  3. OSM tag rules: to write
+  4. project conventions: to write

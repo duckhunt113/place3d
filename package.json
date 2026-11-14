@@ -12,7 +12,8 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "biome check .",
     "fix": "biome check --write .",
-    "palette": "node scripts/build-palette.mjs"
+    "palette": "node scripts/build-palette.mjs",
+    "palette:check": "node scripts/build-palette.mjs --check"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.7"

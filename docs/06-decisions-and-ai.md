@@ -15,7 +15,7 @@ For every question, take the first answer available:
 5. Safe default        house, 2 storeys, gabled (flat in the MVP). Never fails
 ```
 
-Every decision is saved by OSM ID: made once, the same for everyone.
+Every decision is keyed by OSM ID, the same for everyone (MVP: recomputed from tags and rules on load; later: saved once in a shared table). When something pre-made goes in the world, the decision includes an **asset request** (category + attributes), never a file name; the asset catalog's selector picks the model (see [07-assets.md](07-assets.md)).
 
 ### Rules (MVP)
 
@@ -28,6 +28,32 @@ building=yes + small + residential area -> house
 building=yes + < 30 m2 behind a house   -> shed/garage
 no height tag                    -> default for type
 ```
+
+### Trees and plants (MVP)
+
+Where trees go:
+
+```
+natural=tree (node)              -> one tree at that exact spot
+natural=tree_row (way)           -> trees spaced every 8-12 m along the line
+natural=wood / landuse=forest    -> filled with trees (seeded scatter)
+yards, parks, empty lawns        -> sparse seeded scatter (fill)
+every spot                       -> skipped if on a road, sidewalk or inside a building
+```
+
+Which tree (asset request, first answer wins):
+
+```
+leaf_type=needleleaved           -> tree, leafType=needleleaved
+genus=Betula                     -> tree, genus=Betula
+leaf_type=broadleaved            -> tree, leafType=broadleaved
+inside a wood with leaf_type     -> copy the wood's leaf_type
+height=<m>                       -> heightM close to the tag
+no tags                          -> tree, leafType=broadleaved (category default)
+size and variety                 -> seeded from the OSM id or rounded global position
+```
+
+Bushes and hedges work the same way (`natural=shrub`, `barrier=hedge` along the line).
 
 ### Clues for unlabelled buildings (`building=yes`)
 

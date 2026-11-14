@@ -39,8 +39,8 @@ Tags we care about most:
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | **Saved tiles**                                | A few tiles fetched once and kept in the repo. MVP step 1 and test fixtures                                      |
 | **Overpass API**                               | Query one tile live. Use during development for any location                                                     |
-| **Geofabrik extracts** (download.geofabrik.de) | Download a region (Ontario, Canada) and cut it into our own pre-built tiles. Use at launch                       |
-| **planet.openstreetmap.org**                   | The whole world, about 80 GB compressed, updated weekly                                                          |
+| **Geofabrik extracts** (download.geofabrik.de) | Per-region downloads (e.g. Ontario). Pre-build tiles for popular regions first                                   |
+| **planet.openstreetmap.org**                   | The whole world, about 80 GB compressed, weekly, plus daily/hourly change files. Feeds the builder at launch     |
 | **Third-party vector tiles**                   | Pre-cut tiles for 2D maps (OpenFreeMap, Protomaps). Not used: they drop tags we need (shop names, levels, roofs) |
 
 ### Overpass fair use (public instances)
@@ -53,11 +53,18 @@ Tags we care about most:
 
 ### Plan by phase
 
-1. **MVP step 1:** saved Albertson Crescent tiles. No network needed; the same files are the test fixtures.
-2. **Development:** live Overpass for any other location, per zoom-17 tile, through the same `TileSource` interface.
-3. **Launch:** pre-built tiles. A script cuts a Geofabrik extract into our zoom-17 tile format (keeping every tag we need), stored as files or PMTiles in object storage (e.g. Cloudflare R2) behind a CDN, rebuilt regularly; tiles nobody has visited are built the first time they're requested. Paths are versioned (`tiles/v1/…`) so a format change can roll out without breaking old clients.
+The game always asks the `TileSource` for "tile X"; only the supplier behind it changes.
 
-We don't self-host Overpass: our game only ever asks "what's in tile X?", and static files answer that faster, cheaper and more reliably.
+1. **MVP step 1:** saved Albertson Crescent tiles. No network needed; the same files are the test fixtures.
+2. **Development:** live public Overpass for any other location, one query per zoom-17 tile.
+3. **Beta (first real players):** a small server fetches each **missing** tile from public Overpass once, stores it in object storage, and serves the stored copy to everyone after that. Thousands of players on one street cause one Overpass request.
+4. **Launch (whole world):**
+   - **Builder:** one server holds the OSM planet data in a queryable form (self-hosted Overpass, or PostGIS loaded from the planet file) and is kept fresh with OSM's change files. It only builds tiles that don't exist yet; players never query it directly, and its load grows with new places visited, not with players.
+   - **Pre-built tiles:** popular regions are built up front (from Geofabrik extracts or the planet); everywhere else is built on first request and stored from then on.
+   - **Storage + CDN:** tiles live as files or PMTiles in object storage (e.g. Cloudflare R2) behind a CDN, under versioned paths (`tiles/v1/…`) so a format change can roll out without breaking old clients.
+   - **Freshness:** rebuild tiles whose OSM data changed, weekly.
+
+Never put Overpass or any live query service in front of players. Switch from step 3 to step 4 when daily cache misses approach Overpass's fair-use limits.
 
 ### Reliability
 

@@ -1,8 +1,9 @@
 // Generates palette.png and a labelled preview from palette.json.
 // palette.json is the single source of truth; never edit palette.png by hand.
-// Usage: pnpm palette
-import { readFileSync, writeFileSync } from "node:fs";
-import { deflateSync } from "node:zlib";
+// Usage: pnpm palette          (validate + write palette.png and the preview)
+//        pnpm palette:check    (validate + check both files are up to date; writes nothing)
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { deflateSync, inflateSync } from "node:zlib";
 
 const PALETTE_JSON = "apps/web/public/assets/palette.json";
 const PALETTE_PNG = "apps/web/public/assets/palette.png";
@@ -16,6 +17,20 @@ if (errors.length > 0) {
   console.error(`palette.json has ${errors.length} problem(s):`);
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
+}
+
+if (process.argv.includes("--check")) {
+  const stale = [];
+  if (!pngMatches(PALETTE_PNG, buildRaw(palette))) stale.push(PALETTE_PNG);
+  if (!existsSync(PREVIEW_HTML) || readFileSync(PREVIEW_HTML, "utf8") !== buildPreview(palette)) {
+    stale.push(PREVIEW_HTML);
+  }
+  if (stale.length > 0) {
+    console.error(`out of date: ${stale.join(", ")}. Run: pnpm palette`);
+    process.exit(1);
+  }
+  console.log(`palette v${palette.version} OK: files are up to date`);
+  process.exit(0);
 }
 
 writeFileSync(PALETTE_PNG, buildPng(palette));
@@ -51,11 +66,49 @@ function validate(p) {
   return problems;
 }
 
+// Compares decoded pixels, not file bytes: PNG compression can differ between machines.
+function pngMatches(path, expectedRaw) {
+  if (!existsSync(path)) return false;
+  const data = readFileSync(path);
+  const idat = [];
+  let width = 0;
+  let height = 0;
+  for (let i = 8; i < data.length; ) {
+    const length = data.readUInt32BE(i);
+    const type = data.toString("ascii", i + 4, i + 8);
+    if (type === "IHDR") {
+      width = data.readUInt32BE(i + 8);
+      height = data.readUInt32BE(i + 12);
+    }
+    if (type === "IDAT") idat.push(data.subarray(i + 8, i + 8 + length));
+    i += 12 + length;
+  }
+  if (width !== cols * cellPx || height !== rows * cellPx) return false;
+  return inflateSync(Buffer.concat(idat)).equals(expectedRaw);
+}
+
 function buildPng(p) {
   const width = cols * cellPx;
   const height = rows * cellPx;
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header[8] = 8; // bit depth
+  header[9] = 6; // colour type: RGBA
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", header),
+    chunk("IDAT", deflateSync(buildRaw(p), { level: 9 })),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+// Raw scanlines: 1 filter byte (0) per row, then RGBA pixels. Empty slots stay transparent.
+function buildRaw(p) {
+  const width = cols * cellPx;
+  const height = rows * cellPx;
   const stride = width * 4 + 1; // 1 filter byte per row, RGBA pixels
-  const raw = Buffer.alloc(stride * height); // empty slots stay transparent
+  const raw = Buffer.alloc(stride * height);
   for (const { hex, cell } of Object.values(p.colors)) {
     const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
     for (let py = cell[1] * cellPx; py < (cell[1] + 1) * cellPx; py++) {
@@ -68,17 +121,7 @@ function buildPng(p) {
       }
     }
   }
-  const header = Buffer.alloc(13);
-  header.writeUInt32BE(width, 0);
-  header.writeUInt32BE(height, 4);
-  header[8] = 8; // bit depth
-  header[9] = 6; // colour type: RGBA
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk("IHDR", header),
-    chunk("IDAT", deflateSync(raw, { level: 9 })),
-    chunk("IEND", Buffer.alloc(0)),
-  ]);
+  return raw;
 }
 
 function chunk(type, data) {

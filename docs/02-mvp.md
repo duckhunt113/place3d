@@ -16,9 +16,8 @@ Enter coordinates → a 300 m area appears in our stylized look → you can walk
    - **buildings as simple boxes** from real footprints: OSM height, or 2 storeys for houses and 1 for shops
    - flat roofs (a simple gabled roof on small houses only if easy)
    - colour by building type
-   - a plain sign box with the real shop name on retail buildings
-6. **Pre-made kit (small)**: about 5 trees and a few street props, in the `art-style` look.
-7. **Placement**: trees from OSM points plus a scattered fill in yards and parks; shop name signs.
+6. **Pre-made kit (small)**: about 5 trees, a bush, a few street props and a blank shop-sign board, in the `art-style` look, all listed in the asset catalog.
+7. **Placement**: trees from OSM points plus a scattered fill in yards and parks; a shop-sign board on each retail building with the real shop name drawn on it.
 8. **Player**: first-person camera at 1.7 m eye height; WASD + mouse look (pointer lock); Shift to run; Space to jump. Capsule collisions with buildings and trees (Rapier).
 9. **Look**: bright sky, soft shadows, warm sunlight.
 10. **Credit**: "© OpenStreetMap contributors" visible on screen.
