@@ -97,6 +97,10 @@ All colours come from `apps/web/public/assets/palette.json` (names, hex values, 
 
 The references also show cars, utility poles with wires, street lights and detailed facades. Those match the style but are **not in the MVP** (see `CLAUDE.md`). Don't add them unless asked. In the MVP, apply this style to: roads, curbs, sidewalks, lawns, parking lots, box buildings with flat (or simple gabled) roofs, sign boards, trees, a few props, sky and lighting.
 
+## Model concepts
+
+When making a model, open `docs/concepts/<catalog ID>.png` if it exists (e.g. `docs/concepts/prop.bench.png`), and only that one. Use it for shape and proportions; the palette names, real-world size, triangle budget and the rules above still win if they disagree.
+
 ## Checklist before calling visual work done
 
 1. Trees faceted, everything else smooth?

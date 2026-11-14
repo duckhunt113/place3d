@@ -125,6 +125,8 @@ MVP subset: about 5 trees and a few props. Buildings are plain boxes plus a name
 
 MVP: a small catalog (about 5 trees, a few props, a blank shop sign) and the selector from day one.
 
+**Model concepts:** each pre-made model can have a concept image at `docs/concepts/<catalog ID>.png` (e.g. `docs/concepts/prop.bench.png`). When making a model, open only its own concept. It guides shape and proportions; the rules (palette names, real size, triangle budget, art style) win if they disagree.
+
 ## Palette: colours by name
 
 `apps/web/public/assets/palette.json` lists every colour by **name** (e.g. `foliage.light`, `asphalt`, `house.beige`) with its hex value and its cell on the palette grid. It is the single source of truth.
