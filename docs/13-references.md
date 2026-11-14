@@ -28,6 +28,15 @@
 - OSM wiki, Overpass API (instances and usage policy): https://wiki.openstreetmap.org/wiki/Overpass_API
 - Overpass Turbo (test queries): https://overpass-turbo.eu
 - Geofabrik downloads: https://download.geofabrik.de
+- Overture Maps, buildings guide (sources, licence, quality): https://docs.overturemaps.org/guides/buildings
+- Overture Maps, download tool (`overturemaps`): https://docs.overturemaps.org/getting-data/overturemaps-py/
+- Overture Maps, attribution and licensing: https://docs.overturemaps.org/attribution
+- Overture Explorer (look at Overture's data for any place): https://explore.overturemaps.org
+- uv (runs the Overture tool through `uvx`): https://docs.astral.sh/uv/
+- Overture building fields (roof shape, height and more): https://docs.overturemaps.org/schema/reference/buildings/building/
+- Global canopy height map, 1 m (Meta + WRI; later, for real tree positions): https://sustainability.atmeta.com/?p=5573
+- Ontario lidar surface model (later, for real roofs and trees): https://data.ontario.ca/en/dataset/ontario-digital-surface-model-lidar-derived
+- City of Mississauga open data (tree inventory): https://www.mississauga.ca/our-organization/data-and-maps/open-data-catalogue/
 - Mapillary: https://www.mapillary.com
 - Three.js docs: https://threejs.org/docs
 - Rapier (JS): https://rapier.rs
@@ -38,6 +47,8 @@
 ## Checking OSM data for an area
 
 openstreetmap.org → zoom in → "Query features" tool (cursor with a question mark) → click anything to see its tags.
+
+If buildings are missing there, check explore.overturemaps.org for the same place: click a building to see which dataset traced it and its height.
 
 ## Agent skills and plugins (optional; read each SKILL.md before installing)
 

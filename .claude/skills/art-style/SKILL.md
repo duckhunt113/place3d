@@ -67,21 +67,29 @@ Do **not** facet buildings or roads, and do **not** make trees smooth.
 - **Haze:** light blue distance fog so far trees and buildings fade softly.
 - **Overall:** bright, warm, clean. No grime, litter, graffiti, rust or night scenes by default.
 
-### Three.js starting values (`apps/web/src/render` only)
+### Three.js values (`apps/web/src/render` only)
+
+Tuned against the reference images in MVP step 2. The code is in `render/lighting.ts` and `render/sky.ts`.
 
 ```ts
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap; // soft-edged in current three.js; PCFSoftShadowMap was removed
 
-const sun = new THREE.DirectionalLight(0xffe6c0, 3.0); // warm sun; the ONE shadow caster
-const sky = new THREE.HemisphereLight(0xbfd9f5, 0x8a9a5b, 1.0); // sky blue above, grassy bounce below
-scene.fog = new THREE.Fog(0xcfe3f5, 120, 450);
+// Warm sun, 40 degrees up, from the south-west (bearing 235); the ONE shadow caster.
+const sun = new THREE.DirectionalLight(0xffe6c0, 3.2);
+// Sky blue above, grassy bounce below. Strong on purpose: it keeps shaded walls and the
+// ground under trees light and slightly blue, never black.
+const sky = new THREE.HemisphereLight(0xbfd9f5, 0x8a9a5b, 2.2);
+scene.fog = new THREE.Fog(0xcfe3f5, 120, 450); // walking view
+// The fly-around overview camera sits hundreds of metres up and uses Fog(0xcfe3f5, 900, 6000).
 ```
 
-Tune by eye against the reference images, then update these numbers here.
+If you retune by eye against the reference images, update these numbers here.
+
+**Generated building details (MVP):** a light base band (`wall.base`, 0.7 m) at the foot of the walls; flat roofs get a darker cap band (0.35 m); pitched roofs overhang the walls by 0.4 m at a slope of 1 in 2, with a `cream` strip around the eaves and a `cream` underside. These sizes are constants in `packages/world/src/generator/buildings.ts` and `roofs.ts`.
 
 ## Palette
 

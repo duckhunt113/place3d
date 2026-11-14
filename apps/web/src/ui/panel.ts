@@ -1,4 +1,4 @@
-// The on-screen controls: where to go, what is happening, and the map credit. Plain DOM.
+// The on-screen controls: where to go, what is happening, and the map data credits. Plain DOM.
 
 export type Panel = {
   /** Called with the text in the box when the player presses Go (or Enter). */
@@ -22,9 +22,11 @@ export function createPanel(parent: HTMLElement): Panel {
     <p class="hint">Drag to move, right-drag to turn, scroll to zoom.</p>
   `;
   const credit = document.createElement("div");
-  credit.className = "osm-credit";
+  credit.className = "map-credit";
+  // Both map data sources are credited (docs/11-legal-and-privacy.md).
   credit.innerHTML =
-    '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
+    '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, ' +
+    '<a href="https://overturemaps.org" target="_blank" rel="noopener">Overture Maps Foundation</a>';
   parent.append(form, credit);
 
   const input = form.querySelector("input");

@@ -114,7 +114,7 @@ function clipArea(area: Area, box: LatLonBox): Area[] {
     const [outline, ...holes] = rings.map((ring) => ring.slice(0, -1).map(toLatLon));
     const piece: Area = {
       kind: "area",
-      osmId: area.osmId,
+      id: area.id,
       outline: outline ?? [],
       tags: area.tags,
     };
@@ -134,7 +134,7 @@ export function featuresForTile(features: readonly GeoFeature[], id: TileId): Ge
       if (sameTile(tileAt(feature.at), id)) out.push(feature);
     } else if (feature.kind === "road") {
       for (const line of clipLine(feature.line, box)) {
-        const piece: Road = { kind: "road", osmId: feature.osmId, line, tags: feature.tags };
+        const piece: Road = { kind: "road", id: feature.id, line, tags: feature.tags };
         out.push(piece);
       }
     } else {

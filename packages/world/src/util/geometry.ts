@@ -70,3 +70,84 @@ export function withoutRepeats(points: readonly Pair[]): Pair[] {
   }
   return out;
 }
+
+/** The tightest rectangle around a shape, at whatever angle the shape sits. */
+export type BoundingRectangle = {
+  centre: Pair;
+  /** Unit vector along the long side. */
+  axis: Pair;
+  /** Half the long side and half the short side. */
+  halfLong: number;
+  halfShort: number;
+};
+
+/** Convex hull (Andrew's monotone chain), counter-clockwise, without a repeated closing point. */
+export function convexHull(points: readonly Pair[]): Pair[] {
+  const sorted = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (sorted.length < 3) return sorted;
+  const cross = (o: Pair, a: Pair, b: Pair) =>
+    (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const half = (list: Pair[]): Pair[] => {
+    const out: Pair[] = [];
+    for (const p of list) {
+      while (
+        out.length >= 2 &&
+        cross(out[out.length - 2] as Pair, out[out.length - 1] as Pair, p) <= 0
+      ) {
+        out.pop();
+      }
+      out.push(p);
+    }
+    out.pop();
+    return out;
+  };
+  return [...half(sorted), ...half(sorted.reverse())];
+}
+
+/**
+ * The smallest-area rectangle around a ring. One of its sides always lies along an edge of
+ * the ring's convex hull, so trying each hull edge finds it. Undefined for flat or empty rings.
+ */
+export function boundingRectangle(ring: readonly Pair[]): BoundingRectangle | undefined {
+  const hull = convexHull(ring);
+  if (hull.length < 3) return undefined;
+  let best: (BoundingRectangle & { area: number }) | undefined;
+  for (let i = 0; i < hull.length; i++) {
+    const a = hull[i] as Pair;
+    const b = hull[(i + 1) % hull.length] as Pair;
+    const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (length < 1e-12) continue;
+    const ux = (b[0] - a[0]) / length;
+    const uy = (b[1] - a[1]) / length;
+    let minU = Infinity;
+    let maxU = -Infinity;
+    let minV = Infinity;
+    let maxV = -Infinity;
+    for (const p of hull) {
+      const u = (p[0] - a[0]) * ux + (p[1] - a[1]) * uy;
+      const v = -(p[0] - a[0]) * uy + (p[1] - a[1]) * ux;
+      minU = Math.min(minU, u);
+      maxU = Math.max(maxU, u);
+      minV = Math.min(minV, v);
+      maxV = Math.max(maxV, v);
+    }
+    const width = maxU - minU;
+    const depth = maxV - minV;
+    const area = width * depth;
+    if (best && area >= best.area) continue;
+    const midU = (minU + maxU) / 2;
+    const midV = (minV + maxV) / 2;
+    const centre: Pair = [a[0] + midU * ux - midV * uy, a[1] + midU * uy + midV * ux];
+    best =
+      width >= depth
+        ? { centre, axis: [ux, uy], halfLong: width / 2, halfShort: depth / 2, area }
+        : { centre, axis: [-uy, ux], halfLong: depth / 2, halfShort: width / 2, area };
+  }
+  if (!best || best.area <= 0) return undefined;
+  return {
+    centre: best.centre,
+    axis: best.axis,
+    halfLong: best.halfLong,
+    halfShort: best.halfShort,
+  };
+}

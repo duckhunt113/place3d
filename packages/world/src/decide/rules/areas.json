@@ -1,7 +1,7 @@
 {
-  "version": 1,
+  "version": 2,
   "domain": "areas",
-  "note": "OSM tag rules for areas: surface = palette colour name; scatter = seeded asset requests per square metre.",
+  "note": "OSM tag rules for areas: surface = palette colour name; layer = drawing order where areas overlap (higher is drawn on top: 1 land use, 2 green, 3 hard or sandy surfaces, 4 water); scatter = seeded asset requests per square metre.",
   "rules": [
     {
       "id": "area.parking",
@@ -11,7 +11,8 @@
       "then": {
         "surface": "asphalt",
         "markings": "stalls",
-        "curbs": true
+        "curbs": true,
+        "layer": 3
       }
     },
     {
@@ -32,9 +33,10 @@
             "asset": {
               "category": "prop.bench"
             },
-            "perM2": 0.0005
+            "perM2": 0.0001
           }
-        ]
+        ],
+        "layer": 2
       }
     },
     {
@@ -43,7 +45,8 @@
         "landuse": ["grass", "meadow", "village_green"]
       },
       "then": {
-        "surface": "grass"
+        "surface": "grass",
+        "layer": 2
       }
     },
     {
@@ -64,9 +67,10 @@
             "asset": {
               "category": "bush"
             },
-            "perM2": 0.002
+            "perM2": 0.0015
           }
-        ]
+        ],
+        "layer": 1
       }
     },
     {
@@ -84,9 +88,10 @@
                 "leafType": "@leaf_type"
               }
             },
-            "perM2": 0.02
+            "perM2": 0.012
           }
-        ]
+        ],
+        "layer": 2
       }
     },
     {
@@ -104,9 +109,10 @@
                 "leafType": "@leaf_type"
               }
             },
-            "perM2": 0.02
+            "perM2": 0.012
           }
-        ]
+        ],
+        "layer": 2
       }
     },
     {
@@ -115,7 +121,8 @@
         "natural": "water"
       },
       "then": {
-        "surface": "water"
+        "surface": "water",
+        "layer": 4
       }
     },
     {
@@ -124,7 +131,28 @@
         "natural": ["sand", "beach"]
       },
       "then": {
-        "surface": "sand"
+        "surface": "sand",
+        "layer": 3
+      }
+    },
+    {
+      "id": "area.retail",
+      "when": {
+        "landuse": ["retail", "commercial"]
+      },
+      "then": {
+        "surface": "paving",
+        "layer": 1
+      }
+    },
+    {
+      "id": "area.bare",
+      "when": {
+        "landuse": ["construction", "brownfield"]
+      },
+      "then": {
+        "surface": "sand",
+        "layer": 1
       }
     }
   ]

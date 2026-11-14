@@ -1,15 +1,25 @@
 import { describe, expect, it } from "vitest";
+import realCatalog from "../../../../apps/web/public/assets/catalog.json";
+import { AssetSelector } from "../assets/select.ts";
 import testTile from "../data/fixtures/test-tile.json" with { type: "json" };
 import { prepareTile } from "../data/prepare.ts";
 import { project, regionFor } from "../data/project.ts";
 import { tileBounds } from "../data/tiles.ts";
 import { createRuleEngine } from "../decide/rules/index.ts";
-import type { BuildingDecision, MeshData, RoadDecision, TileData, Vec2 } from "../types.ts";
-import { addBuilding } from "./buildings.ts";
-import { addGround } from "./ground.ts";
+import type {
+  AssetCatalog,
+  BuildingDecision,
+  MeshData,
+  RoadDecision,
+  TileData,
+  Vec2,
+} from "../types.ts";
+import { addBuilding, BASE_BAND_M } from "./buildings.ts";
+import { addArea, addGround, LAYER_STEP_M } from "./ground.ts";
 import { MeshSet } from "./mesh.ts";
 import { addRoad, PATH_Y, ROAD_Y } from "./roads.ts";
-import { BUILDING_COLOUR, buildTile, GROUND_COLOUR } from "./tile.ts";
+import { FLAT_CAP_M } from "./roofs.ts";
+import { buildTile, GROUND_COLOUR } from "./tile.ts";
 
 type Triangle = { corners: [number, number, number][]; normal: [number, number, number] };
 
@@ -62,7 +72,7 @@ const only = (set: MeshSet): MeshData => {
 
 const roadDecision = (over: Partial<RoadDecision> = {}): RoadDecision => ({
   kind: "road",
-  osmId: "way/1",
+  id: "way/1",
   widthM: 7,
   sidewalks: "none",
   curbs: false,
@@ -72,17 +82,22 @@ const roadDecision = (over: Partial<RoadDecision> = {}): RoadDecision => ({
   source: "rule",
   ...over,
 });
-const buildingDecision = (heightM: number): BuildingDecision => ({
+const buildingDecision = (
+  heightM: number,
+  over: Partial<BuildingDecision> = {},
+): BuildingDecision => ({
   kind: "building",
-  osmId: "way/2",
+  id: "way/2",
   type: "house",
   storeys: 2,
   heightM,
   roof: "flat",
   colour: "house.beige",
+  roofColour: "roof.dark",
   shopSigns: false,
   rules: [],
   source: "rule",
+  ...over,
 });
 
 describe("addRoad", () => {
@@ -192,18 +207,52 @@ describe("addBuilding", () => {
   ];
   const build = (footprint: Vec2[], height = 6) => {
     const set = new MeshSet();
-    const added = addBuilding(set, footprint, buildingDecision(height), "house.beige");
-    return { added, list: added ? triangles(only(set)) : [] };
+    const added = addBuilding(set, footprint, buildingDecision(height));
+    const meshes = added ? set.toMeshData() : [];
+    const of = (material: string) => triangles(meshes.find((m) => m.material === material));
+    return {
+      added,
+      of,
+      list: meshes.flatMap((m) => triangles(m)),
+      materials: meshes.map((m) => m.material),
+    };
   };
 
-  it("makes four walls and a roof for a square footprint", () => {
+  it("makes four walls and a flat roof for a square footprint", () => {
     const { list } = build(square);
-    expect(list).toHaveLength(4 * 2 + 2);
+    // Per side: a base band, the wall and the roof cap (2 triangles each); plus 2 for the top.
+    expect(list).toHaveLength(4 * 3 * 2 + 2);
     const walls = list.filter((t) => t.normal[1] === 0);
     const roof = list.filter((t) => t.normal[1] === 1);
     expect(totalArea(walls)).toBeCloseTo(4 * 10 * 6, 4);
     expect(totalArea(roof)).toBeCloseTo(100, 4);
     for (const t of roof) for (const corner of t.corners) expect(corner[1]).toBe(6);
+  });
+
+  it("colours the walls, a light band at their foot, and a darker cap and roof", () => {
+    const { of, materials } = build(square);
+    expect(materials).toEqual(["house.beige", "roof.dark", "wall.base"]);
+    const heights = (material: string) => of(material).flatMap((t) => t.corners.map((c) => c[1]));
+    expect(Math.min(...heights("wall.base"))).toBe(0);
+    expect(Math.max(...heights("wall.base"))).toBeCloseTo(BASE_BAND_M, 5);
+    expect(Math.min(...heights("house.beige"))).toBeCloseTo(BASE_BAND_M, 5);
+    expect(Math.max(...heights("house.beige"))).toBeCloseTo(6 - FLAT_CAP_M, 5);
+    expect(Math.min(...heights("roof.dark"))).toBeCloseTo(6 - FLAT_CAP_M, 5);
+    expect(Math.max(...heights("roof.dark"))).toBe(6);
+  });
+
+  it("gives a house the pitched roof its decision asks for, above the walls", () => {
+    const set = new MeshSet();
+    addBuilding(
+      set,
+      square,
+      buildingDecision(6, { roof: "hipped", roofColour: "roof.terracotta" }),
+    );
+    const roof = triangles(set.toMeshData().find((m) => m.material === "roof.terracotta"));
+    const ys = roof.flatMap((t) => t.corners.map((c) => c[1]));
+    expect(Math.min(...ys)).toBe(6);
+    expect(Math.max(...ys)).toBeGreaterThan(8);
+    for (const t of roof) expect(t.normal[1]).toBeGreaterThan(0);
   });
 
   it("stands on the ground and reaches the decided height", () => {
@@ -280,6 +329,48 @@ describe("addGround", () => {
   });
 });
 
+describe("addArea", () => {
+  const outline: Vec2[] = [
+    [0, 0],
+    [20, 0],
+    [20, 10],
+    [0, 10],
+  ];
+  const hole: Vec2[] = [
+    [5, 2],
+    [10, 2],
+    [10, 6],
+    [5, 6],
+  ];
+
+  it("fills the real shape, flat, facing up, at its layer's height", () => {
+    const set = new MeshSet();
+    expect(addArea(set, outline, [], 3, "asphalt")).toBeCloseTo(200, 6);
+    const list = triangles(only(set));
+    expect(totalArea(list)).toBeCloseTo(200, 6);
+    for (const t of list) {
+      expect(t.normal).toEqual([0, 1, 0]);
+      expect(measure(t).facesNormal).toBe(true);
+      for (const corner of t.corners) expect(corner[1]).toBeCloseTo(3 * LAYER_STEP_M, 6);
+    }
+  });
+
+  it("cuts holes out", () => {
+    const set = new MeshSet();
+    expect(addArea(set, outline, [hole], 1, "grass")).toBeCloseTo(200 - 20, 6);
+  });
+
+  it("keeps every layer below the roads", () => {
+    expect(4 * LAYER_STEP_M).toBeLessThan(ROAD_Y);
+  });
+
+  it("adds nothing for a broken outline", () => {
+    const set = new MeshSet();
+    expect(addArea(set, outline.slice(0, 2), [], 1, "grass")).toBe(0);
+    expect(set.toMeshData()).toEqual([]);
+  });
+});
+
 describe("buildTile on the test tile", () => {
   const data = testTile as unknown as TileData;
   const tile = prepareTile(data, "2026-11-13T12:00:00.000Z");
@@ -296,17 +387,19 @@ describe("buildTile on the test tile", () => {
 
   it("makes one mesh per material, sorted by name", () => {
     expect(built.key).toBe("17/36547/47895");
-    expect(built.meshes.map((m) => m.material)).toEqual([
-      "asphalt",
-      BUILDING_COLOUR,
-      "sidewalk",
-      GROUND_COLOUR,
-    ]);
+    const names = built.meshes.map((m) => m.material);
+    expect(names).toEqual([...names].sort());
+    expect(new Set(names).size).toBe(names.length);
+    // Roads, paths, unmapped ground, the car park, building bases and flat-roof caps.
+    for (const name of ["asphalt", "sidewalk", GROUND_COLOUR, "wall.base", "roof.dark"]) {
+      expect(names).toContain(name);
+    }
   });
 
-  it("builds the six buildings this tile owns and its four roads", () => {
-    expect(built.counts.buildings).toBe(6);
+  it("builds the seven buildings this tile owns (six from OSM, one gap-fill) and its four roads", () => {
+    expect(built.counts.buildings).toBe(7);
     expect(built.counts.roads).toBe(4);
+    expect(built.counts.areas).toBe(3);
     expect(built.counts.triangles).toBe(
       built.meshes.reduce((sum, m) => sum + m.indices.length / 3, 0),
     );
@@ -314,14 +407,31 @@ describe("buildTile on the test tile", () => {
 
   it("covers the whole tile with ground", () => {
     // The tile is about 222 m by 221.2 m.
-    expect(totalArea(triangles(mesh(GROUND_COLOUR))) / (222.0 * 221.2)).toBeCloseTo(1, 2);
+    // The base ground lies at height 0; mapped grass areas in the same colour lie above it.
+    const base = triangles(mesh(GROUND_COLOUR)).filter((t) => t.corners.every((c) => c[1] === 0));
+    expect(totalArea(base) / (222.0 * 221.2)).toBeCloseTo(1, 2);
   });
 
   it("gives buildings their decided heights", () => {
-    // Tallest: the apartments at 4 storeys x 3 m.
-    const ys = triangles(mesh(BUILDING_COLOUR)).flatMap((t) => t.corners.map((c) => c[1]));
+    // Tallest: the flat-roofed apartments at 4 storeys x 3 m. Pitched house roofs stay below that.
+    const ys = built.meshes.flatMap((m) => triangles(m).flatMap((t) => t.corners.map((c) => c[1])));
     expect(Math.max(...ys)).toBe(12);
     expect(Math.min(...ys)).toBe(0);
+  });
+
+  it("draws mapped areas on top of the plain ground, each on its own layer", () => {
+    // The fixture's park is grass (layer 2); its car park is asphalt (layer 3), below the roads.
+    const grassHeights = new Set(
+      triangles(mesh("grass")).flatMap((t) =>
+        t.corners.map((c) => Math.round(c[1] / LAYER_STEP_M)),
+      ),
+    );
+    expect(grassHeights.has(0)).toBe(true);
+    expect([...grassHeights].every((layer) => layer <= 2)).toBe(true);
+    const lowestAsphalt = Math.min(
+      ...triangles(mesh("asphalt")).flatMap((t) => t.corners.map((c) => c[1])),
+    );
+    expect(lowestAsphalt).toBeLessThan(ROAD_Y);
   });
 
   it("puts everything where the map says, in local metres", () => {
@@ -346,5 +456,20 @@ describe("buildTile on the test tile", () => {
     for (const m of built.meshes) {
       for (const t of triangles(m)) expect(measure(t).facesNormal).toBe(true);
     }
+  });
+
+  it("places no models without a catalog, and the mapped and scattered ones with it", () => {
+    expect(built.placements).toEqual([]);
+    const selector = new AssetSelector(realCatalog as unknown as AssetCatalog);
+    const withModels = buildTile(tile, region, engine, selector);
+    expect(withModels.meshes).toEqual(built.meshes);
+    expect(withModels.counts.placements).toBe(withModels.placements.length);
+    expect(withModels.placements.length).toBeGreaterThan(20);
+    expect(buildTile(tile, region, createRuleEngine(), selector).placements).toEqual(
+      withModels.placements,
+    );
+    // Trees fill the fixture's park and yards; every asset id exists in the catalog.
+    for (const p of withModels.placements) expect(selector.entry(p.asset)).toBeDefined();
+    expect(withModels.placements.some((p) => p.asset.startsWith("tree."))).toBe(true);
   });
 });

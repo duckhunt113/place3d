@@ -79,3 +79,14 @@ Bigger areas later: stream tiles as the player walks and unload those behind (Ho
 | Props     | Simple box or cylinder per asset                             |
 
 Build colliders from the generator output (plain data), not from Three.js meshes.
+
+## What the MVP renderer does (step 2)
+
+- **One mesh per tile.** The world package sends one mesh per palette colour; `render/meshes.ts` joins them and writes each colour into the corners (vertex colours). A tile's ground, roads and buildings are one draw call.
+- **Models.** `render/assets.ts` loads only the `.glb` files a tile uses, flattens each into one piece of geometry and turns its `pal:` materials into vertex colours. `render/instances.ts` draws every copy of a model in a tile as one instanced mesh. Everything shares one material.
+- **Cost on the Albertson Crescent area (14 tiles):** about 17,000 generated triangles and about 800,000 model triangles (1,783 trees, bushes and props), in roughly 130 draw calls. That is inside the desktop budget; the mobile budget needs fewer or simpler trees (see "LOD" above).
+- **Sky and light** (`render/sky.ts`, `render/lighting.ts`): a gradient sky dome, one warm sun that casts the shadows, a sky-blue fill light. The numbers live in the `art-style` skill.
+- **Shadows** use one 4096 px map stretched over the whole loaded area, about 30 cm per pixel. Fine from above; when walking (step 3) the shadow area should follow the player so nearby shadows are sharp.
+- **Haze** is set for the fly-around camera (far away). Step 3 switches to the walking values in the skill.
+
+Not done yet, by choice: clouds, grass tufts and flower details, level-of-detail for far trees.

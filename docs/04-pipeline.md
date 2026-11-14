@@ -18,6 +18,7 @@ Input: **coordinates + radius**
 All map data comes through the `TileSource` interface (see [03-architecture.md](03-architecture.md)): saved files in MVP step 1, live Overpass during development, pre-built tiles from storage at launch. The rest of the pipeline never knows which one answered.
 
 - OSM: roads, buildings, shops, areas, trees, poles, fences, courts.
+- Overture Maps: building outlines and heights, kept only where OSM has no building. Added when a tile is saved or built, not at play time (see [05-data-sources.md](05-data-sources.md)).
 - Elevation tiles for terrain height (later).
 - Mapillary photos facing buildings, plus detected signs and poles (later).
 - Optional extras (later):
@@ -28,19 +29,19 @@ All map data comes through the `TileSource` interface (see [03-architecture.md](
 **3. Prepare**
 
 - Keep coordinates as lat/lon: stored tiles never contain local metres (see `CLAUDE.md`, hard rule 3).
-- Fix broken shapes and remove duplicates.
+- Fix broken shapes and remove duplicates. OSM features come first, then the tile's gap-fill buildings.
 - Sort features into roads, buildings, areas, points and lines.
 - Assign each building to one **owner tile**: the tile containing its centre.
 - Clip roads and long lines at tile edges.
 
-**4. Decide** (shared table, keyed by OSM feature ID)
+**4. Decide** (shared table, keyed by feature ID: an OSM id such as `way/123`, or `overture/<id>`)
 
 - Reuse a saved decision if the feature already has one.
-- Otherwise take the first available: **OSM tag > rules > trained model > LLM > safe default**.
+- Otherwise take the first available: **OSM tag > rules > trained model > LLM > safe default**. A gap-fill building's Overture values (height) arrive as tags and count like OSM tags.
 - Decides building type, storeys, roof, front side, and which shop sits in which unit.
 - MVP: tags + rules + defaults only.
 
-**5. Facades / profiles** (shared table, keyed by OSM feature ID; later, not in MVP)
+**5. Facades / profiles** (shared table, keyed by feature ID; later, not in MVP)
 
 Facade profiles for buildings come first; the same idea then extends to courts, playgrounds and other places.
 
@@ -102,7 +103,7 @@ The tiles are sent to every player in the room. Everyone gets the same files, so
 - Render the world and spawn the player(s).
 - With multiplayer, sync movement and changed objects with friends.
 - Failed tiles show as plain ground with a loading note until the retry finishes.
-- Show credits: OpenStreetMap contributors (plus Mapillary and others once used).
+- Show credits: OpenStreetMap contributors and Overture Maps Foundation (plus Mapillary and others once used).
 
 ## Partial caching: recap
 
@@ -122,14 +123,14 @@ The tiles are sent to every player in the room. Everyone gets the same files, so
 
 **Features that cross tile edges**
 
-- Decisions and facade profiles are stored by OSM feature ID in one shared table, not per tile. Tiles never contradict each other, and you never pay for AI twice.
+- Decisions and facade profiles are stored by feature ID in one shared table, not per tile. Tiles never contradict each other, and you never pay for AI twice.
 - Each building belongs to one owner tile (the tile containing its centre), so it is generated once.
 - Roads and long lines are clipped at tile edges. Both halves line up because they come from the same line.
 - Rule-based items (scattered trees, poles every 40 m) are seeded by global position, not by tile or local x/z, so they line up across edges.
 
 **Freshness and safety**
 
-- Each tile has a version and a timestamp. Rebuild a tile when its OSM data changes (pre-built tiles are refreshed weekly; see [05-data-sources.md](05-data-sources.md)) or when the tile format or generator version changes.
+- Each tile has a version and a timestamp. Rebuild a tile when its OSM data changes (pre-built tiles are refreshed weekly; see [05-data-sources.md](05-data-sources.md)), when a new Overture release changes its buildings, or when the tile format or generator version changes.
 - If two rooms or requests ask for the same missing tile at once, generate it once and make the other wait.
 - If one tile fails, still send the rest. Show the failed tile as plain ground with a loading note, and retry.
 

@@ -2,7 +2,7 @@
 // The same seed string gives the same sequence on every machine, which is what makes
 // every player see the same world. Never use Math.random() in generation code.
 //
-// Seed from stable GLOBAL values only: an OSM id ("way/123"), a tile id, or global
+// Seed from stable GLOBAL values only: a feature id ("way/123", "overture/..."), a tile id, or global
 // Web Mercator coordinates rounded to a grid. Never from local x/z.
 
 export type Rng = {

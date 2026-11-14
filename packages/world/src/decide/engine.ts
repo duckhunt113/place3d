@@ -1,4 +1,4 @@
-// The rule engine: applies the OSM tag rules in decide/rules/*.json (CLAUDE.md, hard rule 12).
+// The rule engine: applies the OSM tag rules in decide/rules/*.json (CLAUDE.md, hard rule 11).
 // It knows nothing about buildings or roads; all of that lives in the rule data.
 
 import type { Rule, RuleComparison, RuleDomain, RuleSet, Tags } from "../types.ts";

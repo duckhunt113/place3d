@@ -15,7 +15,32 @@ For every question, take the first answer available:
 5. Safe default        house, 2 storeys, gabled (flat in the MVP). Never fails
 ```
 
-Every decision is keyed by OSM ID, the same for everyone (MVP: recomputed from tags and rules on load; later: saved once in a shared table). When something pre-made goes in the world, the decision includes an **asset request** (category + attributes), never a file name; the asset catalog's selector picks the model (see [07-assets.md](07-assets.md)).
+Buildings that come from Overture Maps (where OSM has none) go through the same list. Overture's fields arrive as OSM-style tags (`building=yes`, `height=6.4`; see [05-data-sources.md](05-data-sources.md)), so a measured height wins like a real tag, and rules such as "small `building=yes` on residential land is a house" do the rest. The decision's `source` says `overture` when a measured value was used.
+
+Every decision is keyed by feature ID (an OSM id such as `way/123`, or `overture/<id>` for a gap-fill building), the same for everyone (MVP: recomputed from tags and rules on load; later: saved once in a shared table). When something pre-made goes in the world, the decision includes an **asset request** (category + attributes), never a file name; the asset catalog's selector picks the model (see [07-assets.md](07-assets.md)).
+
+### What is a guess, and what replaces it later
+
+Some things the map almost never says. The MVP guesses them from rules, in a way that is stable (the same building always gets the same answer) and believable:
+
+| Thing               | MVP: how it is decided                                                                              | Later: what overrides the guess                                               |
+| ------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| **Wall colour**     | A seeded pick from the rule's list for that building type                                           | A `building:colour` tag; then colours read from photos by a vision model      |
+| **Roof colour**     | A seeded pick from the rule's `roofColour` list                                                     | A roof colour tag; then photos                                                |
+| **Roof shape**      | Houses that are close to a rectangle: hipped. Shops, apartments, sheds and irregular outlines: flat | A `roof:shape` tag (OSM, or Overture's `roof_shape`); then LiDAR or photos    |
+| **Ridge direction** | Along the building's long side                                                                      | A roof direction tag; then LiDAR or photos                                    |
+| **Tree positions**  | Seeded scatter inside parks, woods and yards                                                        | Mapped trees in OSM; then a city tree inventory, a canopy-height map or LiDAR |
+
+The guesses are never removed. When a better source arrives it goes **above** the guess, and the guess stays as the fallback for every building or place the better source does not cover (no photos, low confidence, not processed yet). For roofs the order becomes:
+
+```
+1. A real roof tag on the map
+2. A measured or photo-derived result, where one exists and is confident   (later)
+3. The rule's guess from building type and shape
+4. Flat
+```
+
+"How rectangular is it" is a geometry fact (`rectangularity`: the share of its tightest surrounding rectangle a footprint fills). The threshold lives in a rule (`building.irregular.flat-roof`), so tuning it is a data change. On the real Albertson Crescent tiles, 300 of the 318 Overture houses pass at 0.75.
 
 ### Rules are data
 
@@ -121,7 +146,7 @@ Where each detail comes from:
 ### Rules for any AI feature
 
 1. Run it once per feature, ahead of time, never while a player waits.
-2. Save every result by OSM ID; reuse it forever.
+2. Save every result by feature ID; reuse it forever.
 3. Force a strict output format; reject nonsense (allowed colours, sane bay counts). When AI chooses assets, it may only return asset requests or IDs that exist in the asset catalog (see [07-assets.md](07-assets.md)); anything else is rejected.
 4. OSM tags beat AI guesses.
 5. Always have a non-AI fallback.

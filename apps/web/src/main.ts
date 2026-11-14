@@ -1,5 +1,11 @@
 import "./style.css";
-import { FIXTURE_CENTRE, type Palette, project, regionFor } from "@somewhere/world";
+import {
+  type AssetCatalog,
+  FIXTURE_CENTRE,
+  type Palette,
+  project,
+  regionFor,
+} from "@somewhere/world";
 import { createWorldView } from "./render/view.ts";
 import { formatLocation, parseLocation } from "./ui/location.ts";
 import { createPanel } from "./ui/panel.ts";
@@ -12,11 +18,18 @@ async function start(): Promise<void> {
   const app = document.querySelector<HTMLDivElement>("#app");
   if (!app) throw new Error("#app element not found");
 
-  const response = await fetch(`${import.meta.env.BASE_URL}assets/palette.json`);
-  if (!response.ok) throw new Error(`Could not load the colour palette (${response.status})`);
-  const palette = (await response.json()) as Palette;
+  const assetsUrl = `${import.meta.env.BASE_URL}assets/`;
+  const load = async <T>(file: string): Promise<T> => {
+    const response = await fetch(`${assetsUrl}${file}`);
+    if (!response.ok) throw new Error(`Could not load ${file} (${response.status})`);
+    return (await response.json()) as T;
+  };
+  const [palette, catalog] = await Promise.all([
+    load<Palette>("palette.json"),
+    load<AssetCatalog>("catalog.json"),
+  ]);
 
-  const view = createWorldView(app, palette);
+  const view = createWorldView(app, palette, catalog, assetsUrl);
   const panel = createPanel(app);
   const world = createWorldClient();
   let latest = 0;
@@ -52,7 +65,7 @@ async function start(): Promise<void> {
           ? ` ${summary.failed} of ${summary.tiles} tiles could not be loaded.`
           : "";
       panel.setStatus(
-        `${summary.buildings} buildings and ${summary.roads} road pieces in ${summary.tiles} tiles (${seconds} s).${failed}`,
+        `${summary.buildings} buildings, ${summary.roads} road pieces and ${summary.placements} trees and props in ${summary.tiles} tiles (${seconds} s).${failed}`,
         summary.failed > 0 ? "error" : "info",
       );
     } catch (error) {

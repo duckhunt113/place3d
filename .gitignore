@@ -41,3 +41,6 @@ pnpm-debug.log*
 *.blend1
 *.blend2
 *.blend@
+
+# Skill updates handed over by a remote Claude session (copy into .claude/skills/, then delete)
+claude-skill-updates/

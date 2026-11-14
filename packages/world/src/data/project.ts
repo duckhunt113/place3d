@@ -63,7 +63,11 @@ export function regionFor(p: LatLon): Region {
 
 /** Lat/lon to local metres [x, z] in a region. */
 export function project(region: Region, p: LatLon): Vec2 {
-  const m = mercator(p);
+  return fromMercator(region, mercator(p));
+}
+
+/** Global Web Mercator metres to local metres [x, z] in a region. */
+export function fromMercator(region: Region, m: { x: number; y: number }): Vec2 {
   return [(m.x - region.originX) * region.k, -(m.y - region.originY) * region.k];
 }
 

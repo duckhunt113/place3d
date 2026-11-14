@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "domain": "buildings",
   "note": "OSM tag rules for buildings. Most specific match wins; priority 100 = copy a real OSM tag (tags always win).",
   "rules": [
@@ -11,7 +11,7 @@
       "then": {
         "type": "house",
         "storeys": 2,
-        "roof": "flat",
+        "roof": "hipped",
         "colour": [
           "house.beige",
           "house.tan",
@@ -21,7 +21,8 @@
           "house.sage",
           "house.blue",
           "house.brick"
-        ]
+        ],
+        "roofColour": ["roof.terracotta", "roof.shingle", "roof.dark"]
       }
     },
     {
@@ -32,7 +33,7 @@
       "then": {
         "type": "house",
         "storeys": 2,
-        "roof": "flat",
+        "roof": "hipped",
         "colour": [
           "house.beige",
           "house.tan",
@@ -42,7 +43,8 @@
           "house.sage",
           "house.blue",
           "house.brick"
-        ]
+        ],
+        "roofColour": ["roof.terracotta", "roof.shingle", "roof.dark"]
       }
     },
     {
@@ -53,7 +55,7 @@
       "then": {
         "type": "house",
         "storeys": 1,
-        "roof": "flat",
+        "roof": "hipped",
         "colour": [
           "house.beige",
           "house.tan",
@@ -63,7 +65,8 @@
           "house.sage",
           "house.blue",
           "house.brick"
-        ]
+        ],
+        "roofColour": ["roof.terracotta", "roof.shingle", "roof.dark"]
       }
     },
     {
@@ -75,7 +78,8 @@
         "type": "apartments",
         "storeys": 4,
         "roof": "flat",
-        "colour": ["house.white", "house.grey", "house.beige", "house.brick"]
+        "colour": ["house.white", "house.grey", "house.beige", "house.brick"],
+        "roofColour": ["roof.dark"]
       }
     },
     {
@@ -88,7 +92,8 @@
         "storeys": 1,
         "roof": "flat",
         "colour": ["house.beige", "house.tan", "house.white", "cream"],
-        "shopSigns": true
+        "shopSigns": true,
+        "roofColour": ["roof.dark"]
       }
     },
     {
@@ -100,7 +105,8 @@
         "type": "shed",
         "storeys": 1,
         "roof": "flat",
-        "colour": ["house.grey", "house.white"]
+        "colour": ["house.grey", "house.white"],
+        "roofColour": ["roof.dark"]
       }
     },
     {
@@ -119,7 +125,8 @@
         "storeys": 1,
         "roof": "flat",
         "colour": ["house.beige", "house.tan", "house.white", "cream"],
-        "shopSigns": true
+        "shopSigns": true,
+        "roofColour": ["roof.dark"]
       }
     },
     {
@@ -137,7 +144,7 @@
       "then": {
         "type": "house",
         "storeys": 2,
-        "roof": "flat",
+        "roof": "hipped",
         "colour": [
           "house.beige",
           "house.tan",
@@ -147,7 +154,8 @@
           "house.sage",
           "house.blue",
           "house.brick"
-        ]
+        ],
+        "roofColour": ["roof.terracotta", "roof.shingle", "roof.dark"]
       }
     },
     {
@@ -164,7 +172,25 @@
         "type": "shed",
         "storeys": 1,
         "roof": "flat",
-        "colour": ["house.grey", "house.white"]
+        "colour": ["house.grey", "house.white"],
+        "roofColour": ["roof.dark"]
+      }
+    },
+    {
+      "id": "building.irregular.flat-roof",
+      "note": "A simple pitched roof only fits a shape that is close to a rectangle. Priority 20 so it beats the building-type rules; a real roof:shape tag (100) still wins.",
+      "when": {
+        "building": "*"
+      },
+      "where": {
+        "rectangularity": {
+          "lt": 0.75
+        }
+      },
+      "priority": 20,
+      "then": {
+        "roof": "flat",
+        "roofColour": ["roof.dark"]
       }
     },
     {

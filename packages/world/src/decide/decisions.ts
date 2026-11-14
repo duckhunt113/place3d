@@ -2,12 +2,17 @@
 // Anything unreadable falls back to a safe value, so a decision never fails.
 
 import type {
+  AreaDecision,
+  AssetRequest,
   BuildingDecision,
   ColorName,
   DecisionSource,
+  FeatureId,
   GeoFeature,
+  ObjectDecision,
   RoadDecision,
   RoofShape,
+  ScatterRule,
 } from "../types.ts";
 import { createRng } from "../util/rng.ts";
 import type { Facts, RuleEngine, RuleResult } from "./engine.ts";
@@ -15,12 +20,15 @@ import { parseMetres, parseNumber } from "./units.ts";
 
 type Building = Extract<GeoFeature, { kind: "building" }>;
 type Road = Extract<GeoFeature, { kind: "road" }>;
+type Area = Extract<GeoFeature, { kind: "area" }>;
+type Point = Extract<GeoFeature, { kind: "point" }>;
 
 const STOREY_HEIGHT_M = 3;
 const ROOFS: readonly RoofShape[] = ["flat", "gabled", "hipped", "pyramidal"];
 
-function sourceOf(result: RuleResult): DecisionSource {
-  if (result.usedTag) return "osm";
+/** A copied tag is a real mapped value: from OSM, or measured by Overture for its buildings. */
+function sourceOf(result: RuleResult, id: FeatureId): DecisionSource {
+  if (result.usedTag) return id.startsWith("overture/") ? "overture" : "osm";
   return result.onlyDefaults ? "default" : "rule";
 }
 
@@ -46,21 +54,27 @@ export function decideBuilding(
   const colours = Array.isArray(v.colour)
     ? v.colour.filter((c): c is ColorName => typeof c === "string")
     : [];
-  // The same building always gets the same colour: the pick is seeded by its OSM id.
+  // The same building always gets the same colour: the pick is seeded by its feature id.
   const colour =
-    colours.length > 0 ? createRng(`${building.osmId}/colour`).pick(colours) : "house.grey";
+    colours.length > 0 ? createRng(`${building.id}/colour`).pick(colours) : "house.grey";
   const roof = ROOFS.find((shape) => shape === v.roof) ?? "flat";
+  const roofColours = Array.isArray(v.roofColour)
+    ? v.roofColour.filter((c): c is ColorName => typeof c === "string")
+    : [];
+  const roofColour =
+    roofColours.length > 0 ? createRng(`${building.id}/roof`).pick(roofColours) : "roof.dark";
   return {
     kind: "building",
-    osmId: building.osmId,
+    id: building.id,
     type: text(v.type, "house"),
     storeys,
     heightM: taggedHeight && taggedHeight > 0 ? taggedHeight : storeys * STOREY_HEIGHT_M,
     roof,
     colour,
+    roofColour,
     shopSigns: v.shopSigns === true,
     rules: result.rules,
-    source: sourceOf(result),
+    source: sourceOf(result, building.id),
   };
 }
 
@@ -83,13 +97,80 @@ export function decideRoad(engine: RuleEngine, road: Road): RoadDecision | undef
   const kind = v.kind === "driveway" || v.kind === "path" ? v.kind : "road";
   return {
     kind,
-    osmId: road.osmId,
+    id: road.id,
     widthM: width && width > 0 ? width : lanes * laneWidth,
     sidewalks: sidewalks(v.sidewalks),
     curbs: v.curbs === true,
     markings: v.markings === "centre" ? "centre" : "none",
     surface: text(v.surface, "asphalt"),
     rules: result.rules,
-    source: sourceOf(result),
+    source: sourceOf(result, road.id),
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Reads `{ category, want }`, keeping only plain text and number wants (a missing tag leaves a want out). */
+export function toAssetRequest(value: unknown): AssetRequest | undefined {
+  if (!isRecord(value) || typeof value.category !== "string" || value.category === "") {
+    return undefined;
+  }
+  const request: AssetRequest = { category: value.category };
+  if (isRecord(value.want)) {
+    const want: Record<string, string | number> = {};
+    for (const [key, wanted] of Object.entries(value.want)) {
+      if (typeof wanted === "string" || typeof wanted === "number") want[key] = wanted;
+    }
+    if (Object.keys(want).length > 0) request.want = want;
+  }
+  return request;
+}
+
+function toScatter(value: unknown): ScatterRule[] {
+  if (!Array.isArray(value)) return [];
+  const out: ScatterRule[] = [];
+  for (const item of value) {
+    if (!isRecord(item)) continue;
+    const asset = toAssetRequest(item.asset);
+    const perM2 = parseNumber(item.perM2);
+    if (asset && perM2 !== undefined && perM2 > 0) out.push({ asset, perM2 });
+  }
+  return out;
+}
+
+/** What surface an area gets, how it stacks with other areas, and what is scattered on it. */
+export function decideArea(engine: RuleEngine, area: Area): AreaDecision | undefined {
+  const result = engine.decide("areas", area.tags);
+  if (!result) return undefined;
+  const v = result.values;
+  if (typeof v.surface !== "string" || v.surface === "") return undefined;
+  return {
+    kind: "area",
+    id: area.id,
+    surface: v.surface,
+    layer: Math.max(0, parseNumber(v.layer) ?? 1),
+    scatter: toScatter(v.scatter),
+    rules: result.rules,
+    source: sourceOf(result, area.id),
+  };
+}
+
+/**
+ * Which kind of model a mapped point becomes. Undefined for points no rule turns into a
+ * model (shops, for example), and for rules that place things along a line.
+ */
+export function decideObject(engine: RuleEngine, point: Point): ObjectDecision | undefined {
+  const result = engine.decide("objects", point.tags);
+  if (result?.values.place !== "point") return undefined;
+  const asset = toAssetRequest(result.values.asset);
+  if (!asset) return undefined;
+  return {
+    kind: "object",
+    id: point.id,
+    asset,
+    rules: result.rules,
+    source: sourceOf(result, point.id),
   };
 }

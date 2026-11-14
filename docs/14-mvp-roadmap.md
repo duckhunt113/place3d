@@ -2,7 +2,7 @@
 
 The build plan for the MVP (v0.1), in the order to build it. What the MVP includes is in [02-mvp.md](02-mvp.md); what comes after it is in [12-roadmap.md](12-roadmap.md).
 
-**Next up:** the step 1 "done when" check (run `pnpm fixtures`, then compare the app with openstreetmap.org), then 2.1 Colours by name.
+**Next up:** 3.1 Collider data.
 
 How to use this file:
 
@@ -13,15 +13,15 @@ How to use this file:
 
 ## Overview
 
-| Step | Result                                               | Status                     |
-| ---- | ---------------------------------------------------- | -------------------------- |
-| 0    | Foundations: workspace, rules, art, models           | Done                       |
-| 1    | Coordinates in → grey roads and building boxes       | Built; final check pending |
-| 2    | Style pass: colours, ground, trees, sky, shadows     | Not started                |
-| 3    | Walking: first-person controls and collisions        | Not started                |
-| 4    | Details: sidewalks, curbs, parking lines, shop signs | Not started                |
-| 5    | Saved tile cache: revisited areas load instantly     | Not started                |
-| 6    | Finish line: checks and the "done when" walk         | Not started                |
+| Step | Result                                               | Status      |
+| ---- | ---------------------------------------------------- | ----------- |
+| 0    | Foundations: workspace, rules, art, models           | Done        |
+| 1    | Coordinates in → grey roads and building boxes       | Done        |
+| 2    | Style pass: colours, ground, trees, sky, shadows     | Done        |
+| 3    | Walking: first-person controls and collisions        | Not started |
+| 4    | Details: sidewalks, curbs, parking lines, shop signs | Not started |
+| 5    | Saved tile cache: revisited areas load instantly     | Not started |
+| 6    | Finish line: checks and the "done when" walk         | Not started |
 
 ## Step 0 — Foundations (done)
 
@@ -43,11 +43,11 @@ Goal: enter coordinates and see plain grey roads and building boxes in the right
 - [x] 1.2 Seeded RNG: `util/rng.ts`. Same seed string (e.g. `way/123`) → same numbers, on every machine
 - [x] 1.3 Projection: `data/project.ts`. Region = zoom-10 tile of the entered point; lat/lon → local metres with the formula in `CLAUDE.md` hard rule 3. Tests: north is −z, east is +x, a known distance comes out in true metres
 - [x] 1.4 Tile grid: `data/tiles.ts`. Lat/lon → zoom-17 tile id, a tile's bounding box, and the tiles a 300 m circle touches
-- [ ] 1.5 Saved tiles: `scripts/fetch-fixture-tiles.ts` (`pnpm fixtures`) fetches the Albertson Crescent tiles from Overpass once (with a `User-Agent`) and writes them to `data/fixtures/tiles/`, one `TileData` JSON per tile, plus a generated `index.ts` that loads them. The script is written and tested against a stand-in server; tick this when `pnpm fixtures` has been run and the tiles are committed
+- [x] 1.5 Saved tiles: `scripts/fetch-fixture-tiles.ts` (`pnpm fixtures`) fetches the Albertson Crescent tiles from Overpass once (with a `User-Agent`) and writes them to `data/fixtures/tiles/`, one `TileData` JSON per tile, plus a generated `index.ts` that loads them
 - [x] 1.6 Tile sources: `data/sources/file.ts` (`FileTileSource`, reads the saved tiles through a loader function, so the world package touches neither the file system nor the DOM; `FallbackTileSource` tries saved tiles first, then Overpass) and `data/sources/overpass.ts` (`OverpassTileSource`: one `out geom` query per tile box, everything that touches the tile). Tests use saved responses only, never the network
 - [x] 1.7 Parsing: `data/parse.ts`. `OsmElement` → `GeoFeature` (buildings, roads, areas, points) with type-qualified ids; drop duplicates and broken shapes
 - [x] 1.8 Tile ownership and clipping: `data/clip.ts`. Each building belongs to the tile holding its centroid; roads and areas are clipped at tile edges, and the two halves line up
-- [x] 1.9 Rule engine: `decide/engine.ts` and `decide/facts.ts`. Applies `rules/*.json` (indexed by tag key; precedence as in hard rule 12) and computes the geometry facts (`footprintM2`, `insideLanduse`, `shopNodesInside`). First use: building and road decisions (`decide/decisions.ts`)
+- [x] 1.9 Rule engine: `decide/engine.ts` and `decide/facts.ts`. Applies `rules/*.json` (indexed by tag key; precedence as in hard rule 11) and computes the geometry facts (`footprintM2`, `insideLanduse`, `shopNodesInside`). First use: building and road decisions (`decide/decisions.ts`)
 - [x] 1.10 Generator, first pass: `generator/roads.ts` (flat ribbons along each road, width from its decision, simple overlapping joins with round ends), `generator/buildings.ts` (walls raised from the footprint, flat roof via `earcut`), `generator/ground.ts` (flat ground per tile), `generator/mesh.ts` (one mesh per tile and material). Test: same input twice → identical output
 - [x] 1.11 Public API: `index.ts` exports `prepareTile` (tile data → parsed, clipped features) and `buildTile` (features → meshes for a tile), plus the tile sources and tile grid
 
@@ -57,22 +57,27 @@ Goal: enter coordinates and see plain grey roads and building boxes in the right
 - [x] 1.13 Worker: `worker/world.worker.ts` runs the world package off the main thread, called through `comlink`
 - [x] 1.14 Renderer, first pass: `render/view.ts` and `render/meshes.ts` turn `MeshData` into Three.js meshes; a simple fly-around debug camera (north up); an FPS counter; the OSM credit on screen
 
-**Done when:** you enter Albertson Crescent's coordinates and see grey roads and building boxes that match the street layout on openstreetmap.org, with north the right way round.
+**Gap-fill buildings (added after the first real run showed OpenStreetMap has no houses here)**
+
+- [x] 1.15 Overture buildings in code: `data/sources/overture.ts` reads Overture's download, `data/gaps.ts` keeps only outlines that don't overlap an OSM building, tiles carry them as `buildings` (tile format 2), features have source-qualified ids (`way/123`, `overture/<id>`), and `pnpm fixtures` downloads and merges them. Tested against a stand-in download
+- [x] 1.16 Saved Overture buildings: `pnpm fixtures --buildings-only` was run; the saved tiles hold 318 Overture houses (all traced by Microsoft, almost all with a measured height)
+
+**Done when:** you enter Albertson Crescent's coordinates and see grey roads and building boxes, houses included, that match the street layout on openstreetmap.org, with north the right way round. (Streets, the plaza and the houses: checked.)
 
 ## Step 2 — Style pass
 
 Goal: the area looks like the `art-style` references.
 
-- [ ] 2.1 Colours by name: the generator tags surfaces with palette names; the renderer resolves them from `palette.json`. (Step 1 already works this way with greys: each mesh's material is a palette name. What's left is using the real colours from the rules)
-- [ ] 2.2 Ground areas: `generator/ground.ts` fills lawns, parks, water, sand and parking surfaces to their real outlines, using `rules/areas.json`. Includes fetching water and wood relations (multipolygons) clipped to the tile; step 1 fetches relations for buildings only
-- [ ] 2.3 Building look: colour from the rule's colour list (seeded pick by OSM id), flat roofs with a darker cap; a simple gabled roof on small houses only if it's easy
-- [ ] 2.4 Asset selector: `assets/select.ts`. Indexes the catalog by category, matches the request's `want`, picks with the seeded RNG, skips `deprecated`, falls back to the category default
-- [ ] 2.5 Placements: `generator/placements.ts`. Mapped trees, tree rows, hedges and props from `rules/objects.json` (hedge and tree-row lines are fetched already but need a `line` feature in `data/parse.ts`); seeded scatter in parks and lawns (seeded by global position); nothing lands on a road or inside a building
-- [ ] 2.6 Model rendering: `render/assets.ts` loads only the `.glb` files a tile uses and swaps each `pal:` material for its palette colour; `render/instances.ts` draws repeats as instanced meshes
-- [ ] 2.7 Sky and light: `render/sky.ts` and `render/lighting.ts` with the starting values in the `art-style` skill (warm sun, one shadow-casting light, soft shadows, light fog)
-- [ ] 2.8 Compare screenshots with the reference images and tune; update the numbers in the skill if they change
+- [x] 2.1 Colours by name: the generator tags surfaces with palette names; the renderer resolves them from `palette.json`
+- [x] 2.2 Ground areas: `generator/ground.ts` fills lawns, parks, woods, parking and other mapped surfaces to their real outlines, using `rules/areas.json`. Each rule gives a `layer`, so overlapping areas stack in a fixed order (land use, green, hard surfaces, water). Still to come with the first lake: fetching water and wood relations clipped to the tile
+- [x] 2.3 Building look: wall and roof colours from the rules' lists (seeded pick by feature id), a light band at the foot of the walls, flat roofs with a darker cap, and a hipped roof with an overhang on houses that are close to a rectangle (`generator/roofs.ts`; the `rectangularity` fact and a rule decide)
+- [x] 2.4 Asset selector: `assets/select.ts`. Indexes the catalog by category, matches the request's `want`, picks with the seeded RNG, skips `deprecated`, falls back to the category default
+- [x] 2.5 Placements: `generator/placements.ts`. Mapped points from `rules/objects.json` (hydrants, stop signs, bins, benches, mapped trees) and seeded scatter in parks, woods and yards on a fixed world grid; nothing lands on a road or inside a building. Hedges and tree rows along lines wait for the "line" kind (a later extra)
+- [x] 2.6 Model rendering: `render/assets.ts` loads only the `.glb` files a tile uses and turns each `pal:` material into its palette colour; `render/instances.ts` draws repeats as instanced meshes
+- [x] 2.7 Sky and light: `render/sky.ts` and `render/lighting.ts` (warm sun, one shadow-casting light, soft shadows, light haze)
+- [x] 2.8 Compare screenshots with the reference images and tune; the numbers in the `art-style` skill are updated
 
-**Done when:** Albertson Crescent shows coloured houses, grass, water, trees where the map has them, a blue sky and soft shadows, and it reads as the same world as the reference images.
+**Done when:** Albertson Crescent shows coloured houses with roofs, grass, woods, scattered trees, a blue sky and soft shadows, and it reads as the same world as the reference images. (Checked in a test browser with the real tiles; look at it yourself with `pnpm dev`.)
 
 ## Step 3 — Walking
 
@@ -81,7 +86,7 @@ Goal: explore the area on foot, in first person.
 - [ ] 3.1 Collider data: `generator/colliders.ts`. Boxes for buildings, trunk cylinders from each asset's catalog collider, flat ground
 - [ ] 3.2 Physics world: `physics/` starts Rapier and builds the colliders from that data, never from visual meshes
 - [ ] 3.3 Player: `player/` with a capsule, eye height 1.7 m, WASD, mouse look with pointer lock, Shift to run, Space to jump
-- [ ] 3.4 Spawn: start at the entered coordinates on clear ground; the debug camera becomes a development-only toggle
+- [ ] 3.4 Spawn: start at the entered coordinates on clear ground; the debug camera becomes a development-only toggle. Switch the haze to the walking values and make the shadow area follow the player, so nearby shadows are sharp
 
 **Done when:** you can walk along Albertson Crescent, buildings and tree trunks stop you, and you can walk under the leaves.
 
@@ -111,7 +116,7 @@ Goal: an area you've visited loads instantly the next time.
 ## Step 6 — Finish line
 
 - [ ] 6.1 Performance: within the budgets in `CLAUDE.md` hard rule 7 (draw calls, triangles, one shadow light, capped pixel ratio)
-- [ ] 6.2 Credit and data rules: "© OpenStreetMap contributors" is always visible; nothing uses Google data
+- [ ] 6.2 Credit and data rules: the map data credits (OpenStreetMap, Overture Maps) are always visible; nothing uses Google Maps or Street View data
 - [ ] 6.3 Run the `repo-audit` skill and fix what it finds
 - [ ] 6.4 Update the status lines in `CLAUDE.md` and `docs/README.md`
 - [ ] 6.5 **The MVP test:** enter the coordinates for Albertson Crescent, recognise the street and the nearby plaza, and walk to the plaza
@@ -119,4 +124,4 @@ Goal: an area you've visited loads instantly the next time.
 
 ## Not in this roadmap
 
-Everything in the "Not in the MVP" list of [02-mvp.md](02-mvp.md): multiplayer, terrain, AI, Mapillary, building kit pieces, complex roofs, poles and cars, tile streaming and mobile controls. Putting the game online is also after the MVP; the build is static files, so it can be hosted whenever you choose.
+Everything in the "Not in the MVP" list of [02-mvp.md](02-mvp.md): multiplayer, terrain, AI, Mapillary, building kit pieces, complex roofs, streams and railway tracks, poles and cars, tile streaming and mobile controls. The small additions left out on purpose are listed as "Later extras" in [12-roadmap.md](12-roadmap.md). Putting the game online is also after the MVP; the build is static files, so it can be hosted whenever you choose.

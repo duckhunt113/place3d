@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import testTile from "../data/fixtures/test-tile.json" with { type: "json" };
-import { parseElements } from "../data/parse.ts";
+import { parseElements, parseTile } from "../data/parse.ts";
 import type { GeoFeature, LatLon, TileData } from "../types.ts";
-import { decideBuilding, decideRoad } from "./decisions.ts";
-import { FactFinder, ringAreaM2 } from "./facts.ts";
+import { decideArea, decideBuilding, decideRoad, toAssetRequest } from "./decisions.ts";
+import { FactFinder, rectangularity, ringAreaM2 } from "./facts.ts";
 import { createRuleEngine } from "./rules/index.ts";
 
 type Building = Extract<GeoFeature, { kind: "building" }>;
@@ -13,7 +13,7 @@ const engine = createRuleEngine();
 const features = parseElements((testTile as unknown as TileData).elements);
 const facts = new FactFinder(features);
 const building = (id: string): Building => {
-  const found = features.find((f) => f.osmId === id);
+  const found = features.find((f) => f.id === id);
   if (found?.kind !== "building") throw new Error(`no building ${id}`);
   return found;
 };
@@ -21,7 +21,7 @@ const decide = (id: string) =>
   decideBuilding(engine, building(id), facts.forBuilding(building(id)));
 const road = (tags: Record<string, string>): Road => ({
   kind: "road",
-  osmId: "way/1",
+  id: "way/1",
   line: [
     { lat: 43.5, lon: -79.6 },
     { lat: 43.6, lon: -79.6 },
@@ -70,11 +70,11 @@ describe("decideBuilding with the project rules", () => {
   it("makes a tagged house a 2-storey house, 6 m tall", () => {
     expect(decide("way/2001")).toMatchObject({
       kind: "building",
-      osmId: "way/2001",
+      id: "way/2001",
       type: "house",
       storeys: 2,
       heightM: 6,
-      roof: "flat",
+      roof: "hipped",
       shopSigns: false,
       source: "rule",
     });
@@ -134,11 +134,8 @@ describe("decideBuilding with the project rules", () => {
       Array.from(
         { length: 40 },
         (_, i) =>
-          decideBuilding(
-            engine,
-            { ...building("way/2001"), osmId: `way/${i}` },
-            { footprintM2: 120 },
-          ).colour,
+          decideBuilding(engine, { ...building("way/2001"), id: `way/${i}` }, { footprintM2: 120 })
+            .colour,
       ),
     );
     expect(colours.size).toBeGreaterThan(3);
@@ -213,5 +210,142 @@ describe("decideRoad with the project rules", () => {
 
   it("returns nothing for lines that are not roads", () => {
     expect(decideRoad(engine, road({ barrier: "hedge" }))).toBeUndefined();
+  });
+});
+
+describe("gap-fill building decisions", () => {
+  const all = parseTile(testTile as unknown as TileData);
+  const finder = new FactFinder(all);
+  const find = (id: string): Building => {
+    const found = all.find((f) => f.id === id);
+    if (found?.kind !== "building") throw new Error(`no building ${id}`);
+    return found;
+  };
+  const house = find("overture/00000000-0000-4000-8000-000000000001");
+
+  it("go through the same rules as OSM buildings", () => {
+    // 120 m2, building=yes, inside residential land: a house. Overture measured its height.
+    const decision = decideBuilding(engine, house, finder.forBuilding(house));
+    expect(decision.id).toBe("overture/00000000-0000-4000-8000-000000000001");
+    expect(decision.type).toBe("house");
+    expect(decision.storeys).toBe(2);
+    expect(decision.heightM).toBe(6.4);
+    expect(decision.rules).toContain("building.yes.small-residential");
+    expect(decision.rules).toContain("tag.height");
+  });
+
+  it("say the answer came from Overture when a measured value was used, never from OSM", () => {
+    expect(decideBuilding(engine, house, finder.forBuilding(house)).source).toBe("overture");
+    const bare = { ...house, tags: { building: "yes" } };
+    expect(decideBuilding(engine, bare, finder.forBuilding(bare)).source).toBe("rule");
+    expect(decide("way/2006").source).toBe("osm");
+  });
+
+  it("pick the same colour every time, seeded by the feature id", () => {
+    const first = decideBuilding(engine, house, finder.forBuilding(house));
+    expect(decideBuilding(engine, house, finder.forBuilding(house))).toEqual(first);
+  });
+});
+
+describe("roofs", () => {
+  // Shapes in steps of 0.0001 degrees, near the fixture.
+  const shape = (points: [number, number][]): LatLon[] =>
+    points.map(([x, y]) => ({ lat: 43.533 + y * 0.0001, lon: -79.62 + x * 0.0001 }));
+  const rectangle = shape([
+    [0, 0],
+    [2, 0],
+    [2, 1],
+    [0, 1],
+  ]);
+  const lShape = shape([
+    [0, 0],
+    [2, 0],
+    [2, 1],
+    [1, 1],
+    [1, 2],
+    [0, 2],
+  ]);
+
+  it("measure how much of its surrounding rectangle a shape fills", () => {
+    expect(rectangularity(rectangle)).toBeCloseTo(1, 6);
+    expect(rectangularity(lShape)).toBeCloseTo(0.75, 3);
+    expect(rectangularity(rectangle.slice(0, 2))).toBe(0);
+  });
+
+  it("are pitched on a house that is close to a rectangle, flat on shops and apartments", () => {
+    expect(decide("way/2001").roof).toBe("hipped");
+    expect(decide("way/2003").roof).toBe("flat");
+    expect(decide("relation/5001").roof).toBe("flat");
+  });
+
+  it("fall back to flat when the outline is too irregular for a simple pitched roof", () => {
+    expect(plain({ building: "house" }, { rectangularity: 0.9 }).roof).toBe("hipped");
+    const irregular = plain({ building: "house" }, { rectangularity: 0.6 });
+    expect(irregular.roof).toBe("flat");
+    expect(irregular.roofColour).toBe("roof.dark");
+    expect(irregular.rules).toContain("building.irregular.flat-roof");
+  });
+
+  it("follow a real roof:shape tag even on an irregular outline", () => {
+    const tagged = plain({ building: "house", "roof:shape": "gabled" }, { rectangularity: 0.6 });
+    expect(tagged.roof).toBe("gabled");
+    expect(tagged.source).toBe("osm");
+  });
+
+  it("get a colour from the rule's list, the same one every time for the same building", () => {
+    const first = decide("way/2001");
+    expect(["roof.terracotta", "roof.shingle", "roof.dark"]).toContain(first.roofColour);
+    expect(decide("way/2001").roofColour).toBe(first.roofColour);
+  });
+});
+
+describe("decideArea", () => {
+  const area = (tags: Record<string, string>): Extract<GeoFeature, { kind: "area" }> => ({
+    kind: "area",
+    id: "way/9",
+    outline: [],
+    tags,
+  });
+
+  it("gives a park grass, a layer above plain land use, and trees to scatter", () => {
+    const park = decideArea(engine, area({ leisure: "park" }));
+    expect(park).toMatchObject({ kind: "area", id: "way/9", surface: "grass", layer: 2 });
+    expect(park?.scatter).toEqual([
+      { asset: { category: "tree" }, perM2: 0.004 },
+      { asset: { category: "prop.bench" }, perM2: 0.0001 },
+    ]);
+  });
+
+  it("stacks surfaces: land use, then green, then hard surfaces, then water", () => {
+    const layer = (tags: Record<string, string>) => decideArea(engine, area(tags))?.layer;
+    expect(layer({ landuse: "residential" })).toBe(1);
+    expect(layer({ leisure: "park" })).toBe(2);
+    expect(layer({ amenity: "parking" })).toBe(3);
+    expect(layer({ natural: "water" })).toBe(4);
+  });
+
+  it("passes a mapped leaf type on to the tree request, and leaves it out when unmapped", () => {
+    const mapped = decideArea(engine, area({ natural: "wood", leaf_type: "needleleaved" }));
+    expect(mapped?.scatter[0]?.asset).toEqual({
+      category: "tree",
+      want: { leafType: "needleleaved" },
+    });
+    const unmapped = decideArea(engine, area({ natural: "wood" }));
+    expect(unmapped?.scatter[0]?.asset).toEqual({ category: "tree" });
+  });
+
+  it("is undefined for areas no rule covers", () => {
+    expect(decideArea(engine, area({ landuse: "railway" }))).toBeUndefined();
+  });
+
+  it("reads asset requests safely", () => {
+    expect(
+      toAssetRequest({ category: "tree", want: { genus: "Acer", size: 2, odd: null } }),
+    ).toEqual({
+      category: "tree",
+      want: { genus: "Acer", size: 2 },
+    });
+    expect(toAssetRequest({ want: {} })).toBeUndefined();
+    expect(toAssetRequest("tree")).toBeUndefined();
   });
 });

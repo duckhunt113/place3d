@@ -2,6 +2,8 @@
 // freezes while an area is fetched and built. The main thread talks to it through comlink.
 
 import {
+  type AssetCatalog,
+  AssetSelector,
   buildTile,
   createRuleEngine,
   FallbackTileSource,
@@ -27,6 +29,8 @@ export type AreaSummary = {
   failed: number;
   buildings: number;
   roads: number;
+  /** Models placed: trees, bushes and props. */
+  placements: number;
   triangles: number;
   /** False if a newer request replaced this one before it finished. */
   finished: boolean;
@@ -42,6 +46,21 @@ const source = new FallbackTileSource([
 ]);
 const engine = createRuleEngine();
 let latestRequest = 0;
+
+/** The asset catalog, fetched once. Without it the world still builds, just without models. */
+const selector: Promise<AssetSelector | undefined> = fetch(
+  `${import.meta.env.BASE_URL}assets/catalog.json`,
+)
+  .then(async (response) => {
+    if (!response.ok) throw new Error(`status ${response.status}`);
+    return new AssetSelector((await response.json()) as AssetCatalog);
+  })
+  .catch((error) => {
+    console.warn(
+      `The asset catalog could not be loaded; building without models: ${String(error)}`,
+    );
+    return undefined;
+  });
 
 const api = {
   /**
@@ -61,6 +80,7 @@ const api = {
       failed: 0,
       buildings: 0,
       roads: 0,
+      placements: 0,
       triangles: 0,
       finished: true,
     };
@@ -74,9 +94,15 @@ const api = {
         const key = tileKey(id);
         try {
           const data = await source.getTile(id);
-          const tile = buildTile(prepareTile(data, new Date().toISOString()), region, engine);
+          const tile = buildTile(
+            prepareTile(data, new Date().toISOString()),
+            region,
+            engine,
+            await selector,
+          );
           summary.buildings += tile.counts.buildings;
           summary.roads += tile.counts.roads;
+          summary.placements += tile.counts.placements;
           summary.triangles += tile.counts.triangles;
           // Hand the big number arrays over instead of copying them.
           const buffers = tile.meshes.flatMap((m) => [

@@ -3,6 +3,7 @@ import { createRuleEngine } from "../../decide/rules/index.ts";
 import { buildTile } from "../../generator/tile.ts";
 import { prepareTile } from "../prepare.ts";
 import { regionFor } from "../project.ts";
+import { TILE_FORMAT_VERSION } from "../sources/overpass.ts";
 import { parseTileKey, tileAt, tileKey, tilesInRadius } from "../tiles.ts";
 import { FIXTURE_CENTRE, fixtureTileKeys, loadFixtureTile } from "./tiles/index.ts";
 
@@ -24,7 +25,10 @@ describe("saved tiles", () => {
     for (const key of fixtureTileKeys) {
       const data = await loadFixtureTile(key);
       expect(data?.id).toEqual(parseTileKey(key));
-      expect(data?.version).toBe(1);
+      expect(
+        data?.version,
+        "the saved tiles are in an older format: run `pnpm fixtures --buildings-only`",
+      ).toBe(TILE_FORMAT_VERSION);
       expect(Array.isArray(data?.elements)).toBe(true);
     }
     expect(await loadFixtureTile("17/0/0")).toBeUndefined();

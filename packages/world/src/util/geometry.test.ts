@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { centroid, type Pair, pointInRing, signedArea, withoutRepeats } from "./geometry.ts";
+import {
+  boundingRectangle,
+  centroid,
+  convexHull,
+  type Pair,
+  pointInRing,
+  signedArea,
+  withoutRepeats,
+} from "./geometry.ts";
 
 const square: Pair[] = [
   [0, 0],
@@ -93,5 +101,71 @@ describe("withoutRepeats", () => {
       [1, 0],
       [0, 0],
     ]);
+  });
+});
+
+describe("boundingRectangle", () => {
+  it("finds an upright rectangle: centre, long side and half sizes", () => {
+    const box = boundingRectangle([
+      [0, 0],
+      [12, 0],
+      [12, 8],
+      [0, 8],
+    ]);
+    expect(box?.centre).toEqual([6, 4]);
+    expect(box?.halfLong).toBeCloseTo(6, 9);
+    expect(box?.halfShort).toBeCloseTo(4, 9);
+    expect(Math.abs(box?.axis[0] ?? 0)).toBeCloseTo(1, 9);
+    expect(box?.axis[1]).toBeCloseTo(0, 9);
+  });
+
+  it("finds a tilted rectangle at its own angle, not a bigger upright box", () => {
+    // 10 x 4, turned so the long side runs along (0.6, 0.8).
+    const turn = (u: number, v: number): [number, number] => [
+      u * 0.6 - v * 0.8 + 50,
+      u * 0.8 + v * 0.6 - 20,
+    ];
+    const box = boundingRectangle([turn(0, 0), turn(10, 0), turn(10, 4), turn(0, 4)]);
+    expect(box?.halfLong).toBeCloseTo(5, 9);
+    expect(box?.halfShort).toBeCloseTo(2, 9);
+    expect(Math.abs((box?.axis[0] ?? 0) * 0.6 + (box?.axis[1] ?? 0) * 0.8)).toBeCloseTo(1, 9);
+    const [cx, cy] = turn(5, 2);
+    expect(box?.centre[0]).toBeCloseTo(cx, 9);
+    expect(box?.centre[1]).toBeCloseTo(cy, 9);
+  });
+
+  it("wraps an L-shape in the rectangle around its corners", () => {
+    const box = boundingRectangle([
+      [0, 0],
+      [8, 0],
+      [8, 4],
+      [4, 4],
+      [4, 8],
+      [0, 8],
+    ]);
+    expect(4 * (box?.halfLong ?? 0) * (box?.halfShort ?? 0)).toBeCloseTo(64, 9);
+  });
+
+  it("is undefined for a line or an empty ring", () => {
+    expect(boundingRectangle([])).toBeUndefined();
+    expect(
+      boundingRectangle([
+        [0, 0],
+        [5, 5],
+        [9, 9],
+      ]),
+    ).toBeUndefined();
+  });
+
+  it("builds the hull without points that lie inside or along an edge", () => {
+    const hull = convexHull([
+      [0, 0],
+      [4, 0],
+      [2, 0],
+      [4, 4],
+      [2, 2],
+      [0, 4],
+    ]);
+    expect(hull).toHaveLength(4);
   });
 });

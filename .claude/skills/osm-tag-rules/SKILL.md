@@ -5,7 +5,7 @@ description: Use when writing, changing or reviewing how OpenStreetMap tags beco
 
 # OSM tag rules for Somewhere
 
-OSM tags say *what* something is. Rules decide *what the game builds for it*. Rules are **data**, not code (`CLAUDE.md`, hard rule 12): JSON files in `packages/world/src/decide/rules/`, applied by one small generic engine in `packages/world/src/decide`. Format and engine behaviour are in `docs/03-architecture.md` (`Rule`, `RuleSet`).
+OSM tags say *what* something is. Rules decide *what the game builds for it*. Rules are **data**, not code (`CLAUDE.md`, hard rule 11): JSON files in `packages/world/src/decide/rules/`, applied by one small generic engine in `packages/world/src/decide`. Format and engine behaviour are in `docs/03-architecture.md` (`Rule`, `RuleSet`).
 
 ## Never
 
@@ -19,9 +19,9 @@ OSM tags say *what* something is. Rules decide *what the game builds for it*. Ru
 
 | File | Covers | Typical output |
 |---|---|---|
-| `buildings.json` | `building=*` and building tags | `type`, `storeys`, `roof`, `colour` (list of palette names, seeded pick), `shopSigns` |
+| `buildings.json` | `building=*` and building tags | `type`, `storeys`, `roof` (`flat`, `hipped`, `gabled`, `pyramidal`), `colour` and `roofColour` (lists of palette names, seeded pick), `shopSigns` |
 | `roads.json` | `highway=*` lines | `kind`, `lanes`, `laneWidthM` or `widthM`, `sidewalks`, `curbs`, `markings`, `surface` |
-| `areas.json` | landuse, leisure, natural, amenity areas | `surface`, `markings`, `scatter` (asset requests per m²) |
+| `areas.json` | landuse, leisure, natural, amenity areas | `surface`, `layer` (drawing order where areas overlap: 1 land use, 2 green, 3 hard or sandy, 4 water), `markings`, `scatter` (asset requests per m²) |
 | `objects.json` | points and lines that place models | `place` (`point` or `along`), `spacingM`, `asset` request, `heightM` |
 
 ## Rule format
@@ -35,9 +35,10 @@ OSM tags say *what* something is. Rules decide *what the game builds for it*. Ru
 ```
 
 - `when`: every key must match. Value = exact string, a list of strings, or `"*"` (tag present, any value).
-- `where` (optional): geometry facts computed in code, with thresholds here. Available facts: `footprintM2`, `insideLanduse`, `shopNodesInside`. Adding a new fact is a code change (with tests) plus a doc update.
+- `where` (optional): geometry facts computed in code, with thresholds here. Available facts: `footprintM2`, `rectangularity` (0–1: how much of its tightest surrounding rectangle a footprint fills; a plain rectangle is 1, an L-shape about 0.75), `insideLanduse`, `shopNodesInside`. Adding a new fact is a code change (with tests) plus a doc update.
 - `then`: decision fields. A string starting with `@` copies that tag's value (`"@building:levels"`, `"@lanes"`, `"@leaf_type"`). If the tag is missing, the field is left out.
 - `priority`: `100` for rules that copy a real OSM tag (tags always win). Leave it out (0) otherwise. Use a value from 1 to 99 only when a rule must beat another equally specific one, and say why in the rule's `note`.
+- `note` (optional): one sentence on why the rule exists, when it isn't obvious.
 - `kind: "none"` in `then` means "build nothing for this" (e.g. `highway=proposed`). Leaving things out is a rule too, never an `if` in code.
 
 ## How rules combine
@@ -70,7 +71,10 @@ A copied tag replaces a number only if it parses as a number (`building:levels=2
 - **`sidewalk`** values: `both`, `left`, `right`, `no`/`none`, `separate` (drawn as its own footway, so don't add one).
 - **`building=yes`** means "a building, type unknown". Use the geometry facts and nearby tags, then the catch-all.
 - **Case and spaces:** tag values are case-sensitive and usually lowercase with underscores. Don't normalise silently; add the variant to the rule's list if it's common.
+- **Roofs:** building-type rules set the roof (`hipped` for houses, `flat` for shops, apartments and sheds). `building.irregular.flat-roof` (priority 20) turns it flat when `rectangularity` is under 0.75, because a simple pitched roof only fits a near-rectangle. A real `roof:shape` tag (priority 100) wins over both.
+- **Scatter densities are per square metre** and add up fast: 0.012 in a wood is one tree per 83 m². Check the totals after changing one (the model triangle budget is in `CLAUDE.md`, hard rule 7).
 - **Missing tags are normal.** Never require a tag that's often absent; give a safe default.
+- **Buildings from Overture Maps** (used where OSM has none) arrive as OSM-style tags, usually just `building=yes` plus `height`, with ids like `overture/<id>`. No special rules: the `building=yes` rules and geometry facts decide what they are, and `height` is copied like any real tag. So keep the `building=yes` rules good; most houses in many suburbs go through them. The field-to-tag mapping lives in `packages/world/src/data/sources/overture.ts` (see `docs/05-data-sources.md`).
 
 ## Before calling a rules change done
 

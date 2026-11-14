@@ -7,20 +7,20 @@ Enter coordinates → a 300 m area appears in our stylized look → you can walk
 ## In the MVP
 
 1. **Location input**: latitude/longitude box, or paste a Google Maps link. We only read the coordinates out of the URL and never use Google's map data. Radius fixed at 300 m.
-2. **Map data**: OpenStreetMap through the tile source: saved Albertson Crescent tiles first, then live Overpass for any other place. Flat ground (no terrain yet).
+2. **Map data**: through the tile source: saved Albertson Crescent tiles first, then live Overpass for any other place. OpenStreetMap supplies everything it has; Overture Maps supplies building outlines where OpenStreetMap has none (most houses around Albertson Crescent). Flat ground (no terrain yet).
 3. **Tiles and caching**: fetch and build the area tile by tile from the start; save each tile so areas load instantly the second time (see [04-pipeline.md](04-pipeline.md)).
 4. **Decisions**: OSM tags + simple rules + safe defaults. No AI.
 5. **Generated in code**:
    - roads, curbs, sidewalks, lawns, parks, water
    - parking lots with painted stall lines
-   - **buildings as simple boxes** from real footprints: OSM height, or 2 storeys for houses and 1 for shops
-   - flat roofs (a simple gabled roof on small houses only if easy)
+   - **buildings as simple boxes** from real footprints (OSM's, else Overture's): the mapped or measured height when there is one, else 2 storeys for houses and 1 for shops
+   - roofs: a simple pitched (hipped) roof on houses whose outline is close to a rectangle; a flat roof with a darker cap on everything else
    - colour by building type
 6. **Pre-made kit (small)**: about 5 trees, a bush, a few street props and a blank shop-sign board, in the `art-style` look, all listed in the asset catalog.
 7. **Placement**: trees from OSM points plus a scattered fill in yards and parks; a shop-sign board on each retail building with the real shop name drawn on it.
 8. **Player**: first-person camera at 1.7 m eye height; WASD + mouse look (pointer lock); Shift to run; Space to jump. Capsule collisions with buildings and trees (Rapier).
 9. **Look**: bright sky, soft shadows, warm sunlight.
-10. **Credit**: "© OpenStreetMap contributors" visible on screen.
+10. **Credit**: "© OpenStreetMap contributors, Overture Maps Foundation" visible on screen.
 
 ## Not in the MVP
 
@@ -29,7 +29,8 @@ Enter coordinates → a 300 m area appears in our stylized look → you can walk
 - Any AI: decisions, profiles, restyles, characters
 - Mapillary / street photos
 - Building kit pieces (storefront bays, windows, doors, pillars, awnings)
-- Complex roofs
+- Complex roofs (following L-shapes and other irregular outlines)
+- Streams, creeks and railway tracks
 - Utility poles, wires, cars, extra props
 - Bigger areas loading as you walk
 - Mobile controls

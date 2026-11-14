@@ -1,13 +1,17 @@
-// Live map data from the public Overpass API: one query per tile.
+// Live OSM data from the public Overpass API: one query per tile.
 // For development only; players never depend on it at launch (docs/05-data-sources.md).
+// It returns OSM data only: gap-fill buildings (Overture) are added when tiles are saved or built.
 
 import type { LatLon, OsmElement, TileData, TileId, TileSource } from "../../types.ts";
 import { type LatLonBox, tileBounds } from "../tiles.ts";
 
 export const OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter";
 
-/** Bump when the saved tile format changes (pre-built tile paths use it: tiles/v1/...). */
-export const TILE_FORMAT_VERSION = 1;
+/**
+ * Bump when the saved tile format changes (pre-built tile paths use it: tiles/v2/...).
+ * 2: tiles can carry gap-fill buildings (`buildings`).
+ */
+export const TILE_FORMAT_VERSION = 2;
 
 // What the game reads from the map. Relations are fetched for buildings only: a big water
 // relation such as a lake would pull in megabytes of outline for one tile.

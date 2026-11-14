@@ -48,9 +48,10 @@ Checked in November 2026:
 ## Core choices (from the original notes)
 
 1. The code is written so Three.js can be swapped for another renderer later (see [03-architecture.md](03-architecture.md)).
-2. OpenStreetMap is the data source.
+2. OpenStreetMap is the main data source. Overture Maps fills in the buildings OpenStreetMap doesn't have.
 3. Main tools:
    - OpenStreetMap: map data
+   - Overture Maps: building outlines where OpenStreetMap has none
    - Mapillary: street photos, after the MVP
    - Three.js: rendering.
 
@@ -61,4 +62,4 @@ Checked in November 2026:
 3. Recognisable beats exact. Stylized beats photoreal.
 4. Ship small: MVP first, then add layers without rewrites.
 5. Respect data licences, privacy and kids' safety from day one.
-6. Scalable by default: every choice must grow to more players, the whole world and the planned AI and multiplayer features without a rewrite (see hard rule 11 in `CLAUDE.md`).
+6. Scalable by default: every choice must grow to more players, the whole world and the planned AI and multiplayer features without a rewrite (see hard rule 10 in `CLAUDE.md`).

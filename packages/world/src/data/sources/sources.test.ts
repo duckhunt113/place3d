@@ -10,6 +10,7 @@ import {
   TILE_FORMAT_VERSION,
   tileDataFromOverpass,
 } from "./overpass.ts";
+import { overtureBuildings } from "./overture.ts";
 
 const saved = testTile as unknown as TileData;
 const TILE: TileId = { z: 17, x: 36547, y: 47895 };
@@ -167,5 +168,150 @@ describe("OverpassTileSource", () => {
       name: "OverpassError",
       status: 429,
     });
+  });
+});
+
+describe("overtureBuildings", () => {
+  // The shape Overture's own download tool writes: the id at the top of each feature,
+  // everything else in properties, missing values left out.
+  const ring = (lat: number, lon: number, size = 0.0001) => [
+    [lon, lat],
+    [lon + size, lat],
+    [lon + size, lat + size],
+    [lon, lat + size],
+    [lon, lat],
+  ];
+  const feature = (
+    id: string,
+    properties: Record<string, unknown>,
+    coordinates = [ring(43.53, -79.61)],
+  ) => ({
+    id,
+    type: "Feature",
+    geometry: { type: "Polygon", coordinates },
+    properties: { version: 1, is_underground: false, has_parts: false, ...properties },
+  });
+  const traced = {
+    sources: [{ property: "", dataset: "Microsoft ML Buildings", confidence: 0.9 }],
+  };
+  const collection = (...features: unknown[]) => ({ type: "FeatureCollection", features });
+
+  it("reads a machine-traced house: id, who traced it, outline and height", () => {
+    const [house] = overtureBuildings(
+      collection(feature("9bada6c0-13fb-4b83-b893-6db1713667e0", { ...traced, height: 6.367762 })),
+    );
+    expect(house).toEqual({
+      id: "overture/9bada6c0-13fb-4b83-b893-6db1713667e0",
+      dataset: "Microsoft ML Buildings",
+      footprint: [
+        { lat: 43.53, lon: -79.61 },
+        { lat: 43.53, lon: -79.6099 },
+        { lat: 43.5301, lon: -79.6099 },
+        { lat: 43.5301, lon: -79.61 },
+      ],
+      tags: { building: "yes", height: "6.4" },
+    });
+  });
+
+  it("turns Overture's fields into OSM-style tags", () => {
+    const [shop] = overtureBuildings(
+      collection(
+        feature("a", {
+          sources: [{ property: "", dataset: "Esri Community Maps" }],
+          class: "retail",
+          subtype: "commercial",
+          num_floors: 2,
+          roof_shape: "gabled",
+          names: { primary: "Corner Shop" },
+        }),
+      ),
+    );
+    expect(shop?.dataset).toBe("Esri Community Maps");
+    expect(shop?.tags).toEqual({
+      building: "retail",
+      "building:levels": "2",
+      "roof:shape": "gabled",
+      name: "Corner Shop",
+    });
+  });
+
+  it("skips outlines that came from OSM: those are read from OSM itself", () => {
+    const fromOsm = feature("osm", {
+      sources: [
+        { property: "", dataset: "OpenStreetMap", record_id: "w123@4" },
+        { property: "/properties/height", dataset: "Microsoft ML Buildings" },
+      ],
+      height: 5,
+    });
+    expect(overtureBuildings(collection(fromOsm))).toEqual([]);
+  });
+
+  it("skips underground buildings, broken outlines and features without an id", () => {
+    const underground = feature("u", { ...traced, is_underground: true });
+    const line = feature("l", traced, [ring(43.53, -79.61).slice(0, 2)]);
+    const point = {
+      id: "p",
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [-79.61, 43.53] },
+      properties: traced,
+    };
+    const nameless = { ...feature("x", traced), id: undefined };
+    expect(overtureBuildings(collection(underground, line, point, nameless, null, "junk"))).toEqual(
+      [],
+    );
+  });
+
+  it("takes the largest part of a building made of several outlines", () => {
+    const multi = {
+      id: "m",
+      type: "Feature",
+      geometry: {
+        type: "MultiPolygon",
+        coordinates: [[ring(43.53, -79.61, 0.0001)], [ring(43.54, -79.62, 0.0003)]],
+      },
+      properties: traced,
+    };
+    const [building] = overtureBuildings(collection(multi));
+    expect(building?.footprint[0]).toEqual({ lat: 43.54, lon: -79.62 });
+  });
+
+  it("finds who traced the outline even when the whole-feature entry is not first", () => {
+    const mixed = feature("mix", {
+      sources: [
+        { property: "/properties/height", dataset: "USGS Lidar" },
+        { property: null, dataset: "Google Open Buildings" },
+      ],
+    });
+    expect(overtureBuildings(collection(mixed))[0]?.dataset).toBe("Google Open Buildings");
+    const none = feature("none", {});
+    expect(overtureBuildings(collection(none))[0]?.dataset).toBe("Overture");
+  });
+
+  it("accepts the id inside properties, as older versions of the tool wrote it", () => {
+    const old = {
+      type: "Feature",
+      geometry: { type: "Polygon", coordinates: [ring(43.53, -79.61)] },
+      properties: { ...traced, id: "old" },
+    };
+    expect(overtureBuildings(collection(old)).map((b) => b.id)).toEqual(["overture/old"]);
+  });
+
+  it("rounds coordinates to about a centimetre", () => {
+    const [building] = overtureBuildings(
+      collection(feature("r", traced, [ring(43.530000004, -79.610000004)])),
+    );
+    expect(building?.footprint[0]).toEqual({ lat: 43.53, lon: -79.61 });
+  });
+
+  it("returns each building once, in id order", () => {
+    const list = overtureBuildings(
+      collection(feature("b", traced), feature("a", traced), feature("b", traced)),
+    );
+    expect(list.map((b) => b.id)).toEqual(["overture/a", "overture/b"]);
+  });
+
+  it("refuses something that is not a feature collection", () => {
+    expect(() => overtureBuildings({ elements: [] })).toThrow(TypeError);
+    expect(() => overtureBuildings(null)).toThrow(TypeError);
   });
 });

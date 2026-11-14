@@ -24,7 +24,7 @@ So the project needs both:
 **Buildings (the shell)**
 
 - Walls raised from the real footprint to the tagged or default height.
-- Roofs fitted to the footprint: flat, gabled, hipped, pyramidal. Complex footprints need a straight-skeleton algorithm, another hard part.
+- Roofs: flat with a darker cap; hipped, gabled and pyramidal built on the tightest rectangle around the footprint (MVP, `generator/roofs.ts`). Roofs that follow complex footprints need a straight-skeleton algorithm, another hard part (after the MVP).
 - Wall sections 3–4 m wide, ready for kit pieces. Fitting pieces to odd wall lengths and angles is the third hard part.
 - Storey bands.
 

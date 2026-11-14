@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { GeoFeature, OsmElement, TileData } from "../types.ts";
+import type { ExtraBuilding, GeoFeature, OsmElement, TileData } from "../types.ts";
 import testTile from "./fixtures/test-tile.json" with { type: "json" };
-import { parseElements } from "./parse.ts";
+import { parseElements, parseExtraBuildings, parseTile } from "./parse.ts";
 
 const tile = testTile as unknown as TileData;
 const features = parseElements(tile.elements);
-const byId = (id: string) => features.find((f) => f.osmId === id);
+const byId = (id: string) => features.find((f) => f.id === id);
 const square = (lat: number, lon: number, size = 0.0002) => [
   { lat, lon },
   { lat, lon: lon + size },
@@ -72,7 +72,7 @@ describe("parseElements rules", () => {
       { type: "node", id: 5, lat: 43.5, lon: -79.6, tags: { natural: "tree" } },
       { type: "way", id: 5, tags: { building: "yes" }, geometry: square(43.5, -79.6) },
     ]);
-    expect(parsed.map((f) => f.osmId)).toEqual(["node/5", "way/5"]);
+    expect(parsed.map((f) => f.id)).toEqual(["node/5", "way/5"]);
   });
 
   it("ignores building=no and buildings that are not closed", () => {
@@ -144,5 +144,52 @@ describe("parseElements rules", () => {
       geometry: square(43.5, -79.6),
     };
     expect(parseElements([row])).toEqual([]);
+  });
+});
+
+describe("gap-fill buildings", () => {
+  const outline = square(43.5, -79.6).slice(0, -1);
+  const extra = (id: string, footprint = outline): ExtraBuilding => ({
+    id: `overture/${id}`,
+    dataset: "Microsoft ML Buildings",
+    footprint,
+    tags: { building: "yes", height: "6.4" },
+  });
+
+  it("become building features that keep their source in the id", () => {
+    expect(parseExtraBuildings([extra("b")])).toEqual([
+      {
+        kind: "building",
+        id: "overture/b",
+        footprint: outline,
+        tags: { building: "yes", height: "6.4" },
+      },
+    ]);
+  });
+
+  it("come out in id order, each once, whatever order they were saved in", () => {
+    const list = parseExtraBuildings([extra("c"), extra("a"), extra("c"), extra("b")]);
+    expect(list.map((f) => f.id)).toEqual(["overture/a", "overture/b", "overture/c"]);
+  });
+
+  it("are dropped when the outline is broken", () => {
+    const line = outline.slice(0, 2);
+    const nan = [{ lat: Number.NaN, lon: -79.6 }, ...outline.slice(1)].slice(0, 3);
+    expect(
+      parseExtraBuildings([extra("line", line), extra("empty", []), extra("nan", nan)]),
+    ).toEqual([]);
+  });
+
+  it("come after the OSM features of the tile", () => {
+    const all = parseTile(tile);
+    expect(all.slice(0, features.length)).toEqual(features);
+    expect(all.slice(features.length).map((f) => f.id)).toEqual([
+      "overture/00000000-0000-4000-8000-000000000001",
+      "overture/00000000-0000-4000-8000-000000000002",
+    ]);
+  });
+
+  it("are optional: a tile without them parses as before", () => {
+    expect(parseTile({ elements: tile.elements })).toEqual(features);
   });
 });

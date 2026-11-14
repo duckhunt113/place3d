@@ -28,9 +28,9 @@ Record any failure as a finding (with the exact error).
 
 ### Rules vs docs
 
-- Every hard rule in `CLAUDE.md` matches what `docs/` says: tile zoom and size, axes (x east, z south), region projection formula, global seeding, `TileSource` and sources by phase, decisions keyed by type-qualified OSM ID, asset catalog, palette by name, scalability rule, testing rules, approved libraries.
+- Every hard rule in `CLAUDE.md` matches what `docs/` says: tile zoom and size, axes (x east, z south), region projection formula, global seeding, `TileSource` and sources by phase, the two map data sources (OSM first, Overture buildings only for gaps), decisions keyed by source-qualified feature ID, asset catalog, palette by name, scalability rule, testing rules, approved libraries.
 - The folder layout in `CLAUDE.md` matches `docs/03-architecture.md`.
-- Data types in `docs/03-architecture.md` agree with the rules (stored data uses lat/lon, OSM IDs or bearings; never local x/z).
+- Data types in `docs/03-architecture.md` agree with the rules (stored data uses lat/lon, feature IDs or bearings; never local x/z).
 - MVP scope in `CLAUDE.md` matches `docs/02-mvp.md`, `docs/12-roadmap.md` and the art-style skill's scope reminder.
 
 ### Rules vs code
@@ -40,8 +40,9 @@ Record any failure as a finding (with the exact error).
 - Only `apps/web/src/render` imports `three`; only `src/physics` and `src/player` import Rapier.
 - No `Math.random()`, `Date.now()` or `new Date()` in generation code; seeds come from global values.
 - No hard-coded `.glb` file names in generator, decision or AI code (assets go through the catalog selector).
-- No tag-specific `if/else` in code: OSM tag rules live only in `packages/world/src/decide/rules/*.json` (hard rule 12). Rules output asset requests and palette names, never asset ids or file names; `rules.test.ts` covers them.
+- No tag-specific `if/else` in code: OSM tag rules live only in `packages/world/src/decide/rules/*.json` (hard rule 11). Rules output asset requests and palette names, never asset ids or file names; `rules.test.ts` covers them.
 - No hard-coded hex colours in generator or render code where a palette name should be used.
+- Map data sources: only `packages/world/src/data/sources/` knows a source's format; other sources are turned into OSM-style tags there; feature ids are source-qualified (`way/123`, `overture/<id>`); the browser contacts no map service except Overpass in development; the on-screen credit names every source in use (OpenStreetMap, Overture Maps).
 - Every module in `packages/world` has a `*.test.ts` next to it; no `test/` folders; no tests calling the network.
 - `--passWithNoTests` is gone once world tests exist.
 - Only approved libraries for their jobs; every dependency listed in `docs/10-tech-stack.md`.
@@ -50,6 +51,7 @@ Record any failure as a finding (with the exact error).
 
 - `catalog.json`: valid, every `file` exists, IDs unique and lowercase-dotted, every entry has source + licence, no deleted IDs (only `deprecated`).
 - Every `.glb` in `apps/web/public/assets/` has a catalog entry.
+- Saved tiles (`packages/world/src/data/fixtures/tiles/`): written by `pnpm fixtures`, never by hand; all at the current tile format version; no gap-fill building overlaps an OSM building. Never run `pnpm fixtures` during an audit: it rewrites files and uses the network.
 - `palette.json`: valid and `palette.png` + `docs/palette-preview.html` up to date (`pnpm palette:check` passes). Never run `pnpm palette` during an audit: it rewrites files.
 - Every `pal:<name>` material used by models exists in `palette.json`; palette variants only use known names.
 
@@ -57,7 +59,7 @@ Record any failure as a finding (with the exact error).
 - Build order in `docs/02-mvp.md` matches the MVP subset in `docs/04-pipeline.md` and the "done when".
 - MVP scope agrees across `CLAUDE.md`, `02-mvp.md`, `04-pipeline.md`, `08-missing-data.md` and `12-roadmap.md` (nothing in one doc's MVP that another excludes).
 - The AI order in `docs/06-decisions-and-ai.md` matches the phases in `docs/12-roadmap.md`.
-- The data plan by phase in `docs/05-data-sources.md` matches `CLAUDE.md` hard rule 4, `docs/10-tech-stack.md` and the roadmap's launch section.
+- The data plan by phase in `docs/05-data-sources.md` (both sources: OSM and Overture) matches `CLAUDE.md` hard rule 4, `docs/08-missing-data.md`, `docs/10-tech-stack.md`, `docs/11-legal-and-privacy.md` and the roadmap's launch section.
 - `docs/10-tech-stack.md` "When" columns match when the roadmap introduces each tool.
 - Every roadmap phase's prerequisites come before it (e.g. photo profiles need kit pieces and a profiles table first).
 - Each concept is described the same way everywhere it appears (e.g. whether something is generated or a model; where coordinates are converted; freshness intervals).
@@ -76,7 +78,7 @@ Record any failure as a finding (with the exact error).
 - Doc numbering and links all resolve; table of contents matches the files.
 - Empty folders or skill folders without a `SKILL.md`.
 
-### Scalability (hard rule 11)
+### Scalability (hard rule 10)
 
 - Any shortcut without a swappable interface, or without its scalable replacement named in the docs.
 - Anything that would break at many players, worldwide coverage, or on the server.

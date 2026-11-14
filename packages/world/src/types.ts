@@ -25,10 +25,19 @@ export type Region = {
   k: number;
 };
 
-// ---------- OSM features ----------
+// ---------- Map features ----------
 
 /** OSM numbers nodes, ways and relations separately, so ids are always type-qualified, e.g. "way/123". */
 export type OsmId = `${"node" | "way" | "relation"}/${number}`;
+
+/** A building from Overture Maps, by its stable id (GERS), e.g. "overture/9bada6c0-13fb-...". */
+export type OvertureId = `overture/${string}`;
+
+/**
+ * Every feature id says which source it came from, so ids never clash between sources.
+ * Seeds and decisions are keyed by it.
+ */
+export type FeatureId = OsmId | OvertureId;
 
 export type Tags = Record<string, string>;
 
@@ -37,34 +46,41 @@ export type Tags = Record<string, string>;
  * GeoFeature (lat/lon) is stored and cached; Feature (local metres) is made when generating.
  */
 export type FeatureOf<P> =
-  | { kind: "building"; osmId: OsmId; footprint: P[]; tags: Tags }
-  | { kind: "road"; osmId: OsmId; line: P[]; tags: Tags }
-  | { kind: "area"; osmId: OsmId; outline: P[]; holes?: P[][]; tags: Tags }
-  | { kind: "point"; osmId: OsmId; at: P; tags: Tags };
+  | { kind: "building"; id: FeatureId; footprint: P[]; tags: Tags }
+  | { kind: "road"; id: FeatureId; line: P[]; tags: Tags }
+  | { kind: "area"; id: FeatureId; outline: P[]; holes?: P[][]; tags: Tags }
+  | { kind: "point"; id: FeatureId; at: P; tags: Tags };
 export type GeoFeature = FeatureOf<LatLon>;
 export type Feature = FeatureOf<Vec2>;
 
 // ---------- Decisions ----------
 
-export type DecisionSource = "osm" | "rule" | "model" | "llm" | "default";
+/**
+ * Where a decision's answer came from: a real OSM tag, a value measured by Overture
+ * (e.g. a building's height), a rule, later a model or an LLM, or the safe default.
+ */
+export type DecisionSource = "osm" | "overture" | "rule" | "model" | "llm" | "default";
 
 export type RoofShape = "flat" | "gabled" | "hipped" | "pyramidal";
 
 /**
- * Decisions: one per osmId, never stored per tile.
- * MVP: recomputed from tags and rules on load. Later: a shared table keyed by osmId.
+ * Decisions: one per feature id, never stored per tile.
+ * MVP: recomputed from tags and rules on load. Later: a shared table keyed by feature id.
  * Each records which rules produced it and where the answer came from.
  */
 export type BuildingDecision = {
   kind: "building";
-  osmId: OsmId;
+  id: FeatureId;
   /** "house", "retail", "apartments", "shed", ... */
   type: string;
   storeys: number;
+  /** Height of the walls, up to the eaves. A pitched roof rises above this. */
   heightM: number;
   roof: RoofShape;
-  /** A palette colour name, picked with the building's own seed. */
+  /** Wall colour: a palette colour name, picked with the building's own seed. */
   colour: ColorName;
+  /** Roof colour, picked the same way. */
+  roofColour: ColorName;
   shopSigns: boolean;
   /** Degrees clockwise from north, so it means the same in every region. */
   frontBearing?: number;
@@ -74,7 +90,7 @@ export type BuildingDecision = {
 
 export type RoadDecision = {
   kind: "road" | "driveway" | "path";
-  osmId: OsmId;
+  id: FeatureId;
   widthM: number;
   sidewalks: "both" | "left" | "right" | "none";
   curbs: boolean;
@@ -85,7 +101,31 @@ export type RoadDecision = {
   source: DecisionSource;
 };
 
-export type Decision = BuildingDecision | RoadDecision;
+/** "This many of this kind of thing per square metre", filled in by seeded scatter. */
+export type ScatterRule = { asset: AssetRequest; perM2: number };
+
+export type AreaDecision = {
+  kind: "area";
+  id: FeatureId;
+  /** A palette colour name. */
+  surface: ColorName;
+  /** Drawing order where areas overlap: higher is drawn on top. */
+  layer: number;
+  scatter: ScatterRule[];
+  rules: string[];
+  source: DecisionSource;
+};
+
+/** A single mapped thing that becomes a model: a hydrant, a stop sign, a mapped tree. */
+export type ObjectDecision = {
+  kind: "object";
+  id: FeatureId;
+  asset: AssetRequest;
+  rules: string[];
+  source: DecisionSource;
+};
+
+export type Decision = BuildingDecision | RoadDecision | AreaDecision | ObjectDecision;
 
 // ---------- Generator output ----------
 
@@ -168,6 +208,8 @@ export type Rule = {
   priority?: number;
   /** Decision fields, palette names and asset requests. "@key" copies that tag's value. */
   then: Record<string, unknown>;
+  /** Why the rule exists, when it is not obvious (e.g. an unusual priority). Not used by the engine. */
+  note?: string;
 };
 
 export type RuleDomain = "buildings" | "roads" | "areas" | "objects";
@@ -187,15 +229,34 @@ export type OsmElement = {
   members?: { type: string; ref: number; role: string; geometry?: LatLon[] }[];
 };
 
+/**
+ * A building from a source other than OSM, used only where OSM has no building.
+ * Its fields are turned into OSM-style tags, so the same rules decide what it becomes.
+ */
+export type ExtraBuilding = {
+  id: OvertureId;
+  /** Who traced the outline, e.g. "Microsoft ML Buildings". Kept for credits and debugging. */
+  dataset: string;
+  /** The outer outline, without repeating the first point at the end. */
+  footprint: LatLon[];
+  /** `building` (the source's class, else "yes"), plus `height`, `building:levels`, `roof:shape` and `name` when known. */
+  tags: Tags;
+};
+
 export type TileData = {
   id: TileId;
-  /** Tile format version; pre-built paths use it (tiles/v1/...). */
+  /** Tile format version; pre-built paths use it (tiles/v2/...). */
   version: number;
-  /** "file" | "overpass" | "prebuilt" */
+  /** Where the OSM elements came from: "overpass" | "prebuilt". A saved file keeps the original. */
   source: string;
   fetchedAt: string;
-  /** Everything that touches the tile, not only what lies inside it. */
+  /** OSM data: everything that touches the tile, not only what lies inside it. */
   elements: OsmElement[];
+  /**
+   * Gap-fill buildings that touch the tile (MVP: from Overture Maps). The source has already
+   * removed any that overlap an OSM building, so OSM always wins. Missing means none.
+   */
+  buildings?: ExtraBuilding[];
 };
 
 export interface TileSource {
@@ -211,6 +272,11 @@ export type WorldTile = {
   version: number;
   generatedAt: string;
   features: GeoFeature[];
+  /**
+   * Outlines of buildings that reach into this tile but belong to a neighbour. They are not
+   * built here; they only keep scattered trees and props out of those buildings.
+   */
+  blockers?: LatLon[][];
 };
 
 /** Defined here, implemented per platform (IndexedDB in the web app, files or a database on the server). */

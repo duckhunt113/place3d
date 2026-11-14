@@ -1,7 +1,16 @@
-// Turns raw OSM elements (Overpass `out geom` shape) into features the game understands.
+// Turns a tile's raw data into features the game understands: OSM elements (Overpass
+// `out geom` shape) first, then gap-fill buildings from other sources.
 // Coordinates stay in lat/lon. Broken shapes and duplicates are dropped.
 
-import type { GeoFeature, LatLon, OsmElement, OsmId, Tags } from "../types.ts";
+import type {
+  ExtraBuilding,
+  GeoFeature,
+  LatLon,
+  OsmElement,
+  OsmId,
+  Tags,
+  TileData,
+} from "../types.ts";
 import { type Pair, signedArea } from "../util/geometry.ts";
 
 /** Rings smaller than this (in square degrees, roughly half a square metre) are treated as broken. */
@@ -9,7 +18,7 @@ const MIN_RING_AREA = 5e-11;
 
 const TYPE_ORDER = { node: 0, way: 1, relation: 2 } as const;
 
-function osmId(element: OsmElement): OsmId {
+function osmIdOf(element: OsmElement): OsmId {
   return `${element.type}/${element.id}`;
 }
 
@@ -32,16 +41,23 @@ function isClosed(points: LatLon[]): boolean {
   return points.length >= 4 && samePoint(points[0] as LatLon, points[points.length - 1] as LatLon);
 }
 
+function ringArea(ring: LatLon[]): number {
+  return Math.abs(signedArea(ring.map((p): Pair => [p.lon, p.lat])));
+}
+
 /** A closed line as a ring without its repeated last point, or undefined if it is not a usable ring. */
 function toRing(points: LatLon[]): LatLon[] | undefined {
   if (!isClosed(points)) return undefined;
   const ring = points.slice(0, -1);
-  const area = Math.abs(signedArea(ring.map((p): Pair => [p.lon, p.lat])));
-  return ring.length >= 3 && area >= MIN_RING_AREA ? ring : undefined;
+  return ring.length >= 3 && ringArea(ring) >= MIN_RING_AREA ? ring : undefined;
 }
 
-function ringArea(ring: LatLon[]): number {
-  return Math.abs(signedArea(ring.map((p): Pair => [p.lon, p.lat])));
+/**
+ * A usable outline from a closed line of points (first point repeated at the end), or undefined.
+ * Shared with the other map sources, so every source drops the same broken shapes.
+ */
+export function closedLineToRing(points: LatLon[] | undefined): LatLon[] | undefined {
+  return toRing(clean(points));
 }
 
 function isBuilding(tags: Tags): boolean {
@@ -87,21 +103,21 @@ function parseNode(element: OsmElement, tags: Tags): GeoFeature | undefined {
     return undefined;
   }
   if (Object.keys(tags).length === 0) return undefined;
-  return { kind: "point", osmId: osmId(element), at: { lat, lon }, tags };
+  return { kind: "point", id: osmIdOf(element), at: { lat, lon }, tags };
 }
 
 function parseWay(element: OsmElement, tags: Tags): GeoFeature | undefined {
   const points = clean(element.geometry);
   const ring = toRing(points);
-  const id = osmId(element);
+  const id = osmIdOf(element);
   if (isBuilding(tags)) {
-    return ring ? { kind: "building", osmId: id, footprint: ring, tags } : undefined;
+    return ring ? { kind: "building", id, footprint: ring, tags } : undefined;
   }
   if (tags.highway) {
-    if (ring && tags.area === "yes") return { kind: "area", osmId: id, outline: ring, tags };
-    return points.length >= 2 ? { kind: "road", osmId: id, line: points, tags } : undefined;
+    if (ring && tags.area === "yes") return { kind: "area", id, outline: ring, tags };
+    return points.length >= 2 ? { kind: "road", id, line: points, tags } : undefined;
   }
-  if (ring && isAreaLike(tags)) return { kind: "area", osmId: id, outline: ring, tags };
+  if (ring && isAreaLike(tags)) return { kind: "area", id, outline: ring, tags };
   return undefined;
 }
 
@@ -113,13 +129,13 @@ function parseRelation(element: OsmElement, tags: Tags): GeoFeature | undefined 
   const outers = stitchRings(lines("outer")).sort((a, b) => ringArea(b) - ringArea(a));
   const outline = outers[0];
   if (!outline) return undefined;
-  const id = osmId(element);
-  if (isBuilding(tags)) return { kind: "building", osmId: id, footprint: outline, tags };
+  const id = osmIdOf(element);
+  if (isBuilding(tags)) return { kind: "building", id, footprint: outline, tags };
   if (!isAreaLike(tags)) return undefined;
   const holes = stitchRings(lines("inner"));
   return holes.length > 0
-    ? { kind: "area", osmId: id, outline, holes, tags }
-    : { kind: "area", osmId: id, outline, tags };
+    ? { kind: "area", id, outline, holes, tags }
+    : { kind: "area", id, outline, tags };
 }
 
 /**
@@ -133,7 +149,7 @@ export function parseElements(elements: readonly OsmElement[]): GeoFeature[] {
   );
   const features: GeoFeature[] = [];
   for (const element of sorted) {
-    const id = osmId(element);
+    const id = osmIdOf(element);
     if (seen.has(id)) continue;
     seen.add(id);
     const tags = element.tags ?? {};
@@ -146,4 +162,30 @@ export function parseElements(elements: readonly OsmElement[]): GeoFeature[] {
     if (feature) features.push(feature);
   }
   return features;
+}
+
+/**
+ * Gap-fill buildings to features, in id order. The outline is checked again here, because
+ * saved tiles are read from files.
+ */
+export function parseExtraBuildings(buildings: readonly ExtraBuilding[]): GeoFeature[] {
+  const seen = new Set<string>();
+  const features: GeoFeature[] = [];
+  const sorted = [...buildings].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  for (const building of sorted) {
+    if (seen.has(building.id)) continue;
+    seen.add(building.id);
+    const points = clean(building.footprint);
+    const first = points[0];
+    // Stored outlines do not repeat the first point; close the line to reuse the same checks.
+    const ring = first ? toRing([...points, first]) : undefined;
+    if (!ring) continue;
+    features.push({ kind: "building", id: building.id, footprint: ring, tags: building.tags });
+  }
+  return features;
+}
+
+/** Everything in a tile's data as features: OSM first, then the gap-fill buildings. */
+export function parseTile(data: Pick<TileData, "elements" | "buildings">): GeoFeature[] {
+  return [...parseElements(data.elements), ...parseExtraBuildings(data.buildings ?? [])];
 }

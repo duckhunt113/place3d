@@ -4,7 +4,7 @@
     "x": 36547,
     "y": 47895
   },
-  "version": 1,
+  "version": 2,
   "source": "file",
   "fetchedAt": "2026-11-13T00:00:00.000Z",
   "elements": [
@@ -507,6 +507,59 @@
           ]
         }
       ]
+    }
+  ],
+  "buildings": [
+    {
+      "id": "overture/00000000-0000-4000-8000-000000000001",
+      "dataset": "Microsoft ML Buildings",
+      "footprint": [
+        {
+          "lat": 43.5335,
+          "lon": -79.6196
+        },
+        {
+          "lat": 43.5335,
+          "lon": -79.61945
+        },
+        {
+          "lat": 43.53359,
+          "lon": -79.61945
+        },
+        {
+          "lat": 43.53359,
+          "lon": -79.6196
+        }
+      ],
+      "tags": {
+        "building": "yes",
+        "height": "6.4"
+      }
+    },
+    {
+      "id": "overture/00000000-0000-4000-8000-000000000002",
+      "dataset": "Microsoft ML Buildings",
+      "footprint": [
+        {
+          "lat": 43.5335,
+          "lon": -79.61795
+        },
+        {
+          "lat": 43.5335,
+          "lon": -79.6178
+        },
+        {
+          "lat": 43.53359,
+          "lon": -79.6178
+        },
+        {
+          "lat": 43.53359,
+          "lon": -79.61795
+        }
+      ],
+      "tags": {
+        "building": "yes"
+      }
     }
   ]
 }

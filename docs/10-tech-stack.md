@@ -12,6 +12,7 @@
 | **VS Code**                      | Editor with the best TypeScript support                                                                                                                                                     | MVP  |
 | **Biome**                        | Linter + formatter in one (`pnpm lint`, `pnpm fix`); config in `biome.json`                                                                                                                 | MVP  |
 | **Vitest**                       | Tests in both packages, especially "same input gives the same world". Test files sit next to the code as `*.test.ts`; rules in `CLAUDE.md`                                                  | MVP  |
+| **uv** (`uvx`)                   | Runs Overture's official download tool (`overturemaps`, a Python program) without installing it. Needed only for `pnpm fixtures`; nothing in the game uses Python                           | MVP  |
 
 ## Libraries
 
@@ -27,15 +28,16 @@
 
 ## Data
 
-| Source                                                                                                                                                                                     | When          |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
-| Saved tiles (Albertson Crescent), then OpenStreetMap via Overpass API, through the `TileSource` interface                                                                                  | MVP           |
-| Tile cache: interface in `@somewhere/world`, IndexedDB in the browser (server storage later)                                                                                               | MVP           |
-| Elevation tiles                                                                                                                                                                            | Later         |
-| Mapillary (+ Mapilio / KartaView / Panoramax)                                                                                                                                              | Later         |
-| Licensed aerial imagery, city tree data, LiDAR                                                                                                                                             | Later         |
-| Open-Meteo weather                                                                                                                                                                         | Optional      |
-| Beta: server caches tiles fetched once from Overpass. Launch: builder (self-hosted Overpass or PostGIS from the OSM planet) + pre-built tiles in object storage (e.g. Cloudflare R2) + CDN | Beta / launch |
+| Source                                                                                                                                                                                                                                                    | When          |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| Saved tiles (Albertson Crescent), then OpenStreetMap via Overpass API, through the `TileSource` interface                                                                                                                                                 | MVP           |
+| Overture Maps buildings (open data files): outlines and heights where OpenStreetMap has no building; merged in when tiles are saved or built                                                                                                              | MVP           |
+| Tile cache: interface in `@somewhere/world`, IndexedDB in the browser (server storage later)                                                                                                                                                              | MVP           |
+| Elevation tiles                                                                                                                                                                                                                                           | Later         |
+| Mapillary (+ Mapilio / KartaView / Panoramax)                                                                                                                                                                                                             | Later         |
+| Licensed aerial imagery, city tree data, LiDAR                                                                                                                                                                                                            | Later         |
+| Open-Meteo weather                                                                                                                                                                                                                                        | Optional      |
+| Beta: server caches tiles fetched once from Overpass, with Overture buildings added. Launch: builder (self-hosted Overpass or PostGIS from the OSM planet, plus Overture's building files) + pre-built tiles in object storage (e.g. Cloudflare R2) + CDN | Beta / launch |
 
 ## World building
 

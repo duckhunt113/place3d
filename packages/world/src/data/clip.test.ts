@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { GeoFeature, LatLon, TileData, TileId } from "../types.ts";
 import { clipLine, featuresForTile, footprintCentre } from "./clip.ts";
 import testTile from "./fixtures/test-tile.json" with { type: "json" };
-import { parseElements } from "./parse.ts";
+import { parseTile } from "./parse.ts";
 import { prepareTile, WORLD_TILE_VERSION } from "./prepare.ts";
 import { tileBounds } from "./tiles.ts";
 
@@ -11,16 +11,17 @@ const TILE: TileId = data.id;
 const EAST: TileId = { ...TILE, x: TILE.x + 1 };
 const WEST: TileId = { ...TILE, x: TILE.x - 1 };
 const box = tileBounds(TILE);
-const all = parseElements(data.elements);
+const all = parseTile(data);
 const here = featuresForTile(all, TILE);
 const ids = (features: GeoFeature[], kind: GeoFeature["kind"]) =>
-  features.filter((f) => f.kind === kind).map((f) => f.osmId);
+  features.filter((f) => f.kind === kind).map((f) => f.id);
 const inBox = (p: LatLon) =>
   p.lon >= box.west && p.lon <= box.east && p.lat >= box.south && p.lat <= box.north;
 
 describe("building ownership", () => {
   it("gives each building to exactly one tile: the one holding its centre", () => {
     // way/2005's centre is east of the tile; way/2006 pokes out west but its centre is inside.
+    // Gap-fill buildings follow the same rule: one is inside, one has its centre to the east.
     expect(ids(here, "building")).toEqual([
       "way/2001",
       "way/2002",
@@ -28,18 +29,22 @@ describe("building ownership", () => {
       "way/2004",
       "way/2006",
       "relation/5001",
+      "overture/00000000-0000-4000-8000-000000000001",
     ]);
-    expect(ids(featuresForTile(all, EAST), "building")).toEqual(["way/2005"]);
+    expect(ids(featuresForTile(all, EAST), "building")).toEqual([
+      "way/2005",
+      "overture/00000000-0000-4000-8000-000000000002",
+    ]);
     expect(ids(featuresForTile(all, WEST), "building")).toEqual([]);
   });
 
   it("keeps an owned building whole, even the part outside the tile", () => {
-    const house = here.find((f) => f.osmId === "way/2006");
+    const house = here.find((f) => f.id === "way/2006");
     expect(house?.kind === "building" && house.footprint.some((p) => p.lon < box.west)).toBe(true);
   });
 
   it("finds the centre of a footprint", () => {
-    const house = all.find((f) => f.osmId === "way/2001");
+    const house = all.find((f) => f.id === "way/2001");
     if (house?.kind !== "building") throw new Error("fixture changed");
     const centre = footprintCentre(house.footprint);
     // The house spans 45-57 m east and 140-150 m north of the tile's south-west corner.
@@ -57,7 +62,7 @@ describe("points", () => {
 
 describe("roads", () => {
   it("are cut at the tile's edges", () => {
-    const street = here.filter((f) => f.osmId === "way/1001");
+    const street = here.filter((f) => f.id === "way/1001");
     expect(street).toHaveLength(1);
     const line = street[0]?.kind === "road" ? street[0].line : [];
     expect(line.every(inBox)).toBe(true);
@@ -68,7 +73,7 @@ describe("roads", () => {
 
   it("meet at exactly the same point in the neighbouring tile", () => {
     const end = (features: GeoFeature[], which: "first" | "last") => {
-      const road = features.find((f) => f.osmId === "way/1001");
+      const road = features.find((f) => f.id === "way/1001");
       const line = road?.kind === "road" ? road.line : [];
       return which === "first" ? line[0] : line[line.length - 1];
     };
@@ -77,8 +82,8 @@ describe("roads", () => {
   });
 
   it("stay untouched when they are fully inside", () => {
-    const driveway = here.find((f) => f.osmId === "way/1002");
-    const original = all.find((f) => f.osmId === "way/1002");
+    const driveway = here.find((f) => f.id === "way/1002");
+    const original = all.find((f) => f.id === "way/1002");
     expect(driveway).toEqual(original);
   });
 });
@@ -109,7 +114,7 @@ describe("clipLine", () => {
 
 describe("areas", () => {
   it("are cut to the tile", () => {
-    const land = here.filter((f) => f.osmId === "way/3001");
+    const land = here.filter((f) => f.id === "way/3001");
     expect(land).toHaveLength(1);
     const outline = land[0]?.kind === "area" ? land[0].outline : [];
     expect(outline.length).toBeGreaterThanOrEqual(4);
@@ -122,9 +127,7 @@ describe("areas", () => {
   });
 
   it("stay untouched when they are fully inside", () => {
-    expect(here.find((f) => f.osmId === "way/3002")).toEqual(
-      all.find((f) => f.osmId === "way/3002"),
-    );
+    expect(here.find((f) => f.id === "way/3002")).toEqual(all.find((f) => f.id === "way/3002"));
   });
 });
 
@@ -139,5 +142,16 @@ describe("prepareTile", () => {
 
   it("gives the same tile every time", () => {
     expect(prepareTile(data, "t")).toEqual(prepareTile(data, "t"));
+  });
+
+  it("remembers the outlines of neighbours' buildings that reach into the tile", () => {
+    // way/2005 belongs to the tile to the east but pokes in; so does the second gap-fill building.
+    const tile = prepareTile(data, "t");
+    const reaching = all.filter(
+      (f) => f.id === "way/2005" || f.id === "overture/00000000-0000-4000-8000-000000000002",
+    );
+    expect(tile.blockers).toEqual(reaching.map((f) => (f.kind === "building" ? f.footprint : [])));
+    // A tile with nothing reaching in has no list at all.
+    expect(prepareTile({ ...data, elements: [], buildings: [] }, "t").blockers).toBeUndefined();
   });
 });
