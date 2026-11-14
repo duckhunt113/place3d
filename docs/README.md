@@ -5,7 +5,7 @@ You type coordinates, and everything inside a radius around them is rebuilt in 3
 data: roads, buildings with real shop names, parks, trees. You explore it in first person in your web
 browser. Exploring with friends comes after the MVP.
 
-Status: **MVP in progress.** The workspace is set up; world code starts with step 1 of [02-mvp.md](02-mvp.md).
+Status: **MVP in progress.** The workspace is set up; world code starts with step 1 of [14-mvp-roadmap.md](14-mvp-roadmap.md).
 
 ## Contents
 
@@ -24,6 +24,7 @@ Status: **MVP in progress.** The workspace is set up; world code starts with ste
 | 11  | [Legal, privacy and safety](11-legal-and-privacy.md) | Licences, attribution, Google data, logos, private homes, kid safety     |
 | 12  | [Roadmap](12-roadmap.md)                             | Phases after the MVP                                                     |
 | 13  | [References](13-references.md)                       | Similar projects, useful repos, docs, skills                             |
+| 14  | [MVP roadmap](14-mvp-roadmap.md)                     | The MVP build plan, item by item, with checkboxes and "Next up"          |
 
 ## The idea in one diagram
 

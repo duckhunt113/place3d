@@ -2,7 +2,7 @@
 
 Somewhere is a web app. You enter coordinates and a radius, and the real area inside that radius is rebuilt from OpenStreetMap as a bright, kid-friendly, stylized 3D world (faceted low-poly trees, smooth simplified buildings and streets; see the `art-style` skill). You then explore it in first person in the browser. Multiplayer and AI features come after the MVP.
 
-**Status:** MVP in progress. The workspace is set up (pnpm, Vite + TypeScript web app, engine-free `@somewhere/world` package); world code starts with MVP step 1. Full project details live in `docs/` (start at `docs/README.md`).
+**Status:** MVP in progress. The workspace is set up (pnpm, Vite + TypeScript web app, engine-free `@somewhere/world` package); world code starts with MVP step 1 (build plan: `docs/14-mvp-roadmap.md`). Full project details live in `docs/` (start at `docs/README.md`).
 
 ## Current scope: MVP only
 
@@ -152,6 +152,7 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
   - `idb-keyval` (web): IndexedDB storage behind the tile cache
 - **New dependencies:** must suit their package (in `packages/world`: no DOM, three.js or Rapier) and pass hard rule 11; add them to `docs/10-tech-stack.md` in the same change.
 - **Biome** is the only linter and formatter (config in `biome.json`: 2 spaces, double quotes, semicolons, 100-char lines). Don't add ESLint or Prettier. Run `pnpm fix` before committing; don't silence a lint rule without a short comment saying why (`// biome-ignore lint/<rule>: <reason>`).
+- **Build plan:** `docs/14-mvp-roadmap.md` lists the MVP work in order. Unless asked otherwise, work on its "Next up" item; when an item is done and green, tick it and update "Next up" in the same change.
 - **New conventions go in the rules.** When we adopt a new convention (naming, folder layout, tooling, workflow), add it to this file in the same change, and update the matching doc in `docs/`.
 - Keep the docs in `docs/` in sync when a design decision changes.
 - Multiplayer (later) uses **Colyseus**.

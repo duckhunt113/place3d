@@ -44,6 +44,8 @@ Enter coordinates → a 300 m area appears in our stylized look → you can walk
 | 4    | Shop name signs, parking lines, sidewalks                                                                                                  | 1–2 days   |
 | 5    | Saved tile cache (IndexedDB), so revisited areas load instantly                                                                            | 1 day      |
 
+The item-by-item plan for each step, with checkboxes, is in [14-mvp-roadmap.md](14-mvp-roadmap.md).
+
 Tip: step 1 can start with **no buildings at all** (roads + ground + walking) as a one-day stepping stone, then add boxes.
 
 ## Done when

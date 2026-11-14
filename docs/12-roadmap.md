@@ -4,7 +4,7 @@ Suggested order. Each phase builds on the last without rewrites. Adjust as you l
 
 ## v0.1: MVP (single player)
 
-See [02-mvp.md](02-mvp.md).
+See [02-mvp.md](02-mvp.md) for the scope and [14-mvp-roadmap.md](14-mvp-roadmap.md) for the build plan.
 
 Coordinates in, a 300 m stylized area out, walking around it in first person. Tags + rules only. Tile cache.
 
