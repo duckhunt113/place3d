@@ -13,15 +13,15 @@ How to use this file:
 
 ## Overview
 
-| Step | Result                                               | Rough time | Status      |
-| ---- | ---------------------------------------------------- | ---------- | ----------- |
-| 0    | Foundations: workspace, rules, art, models           | done       | Done        |
-| 1    | Coordinates in → grey roads and building boxes       | 2–3 days   | Not started |
-| 2    | Style pass: colours, ground, trees, sky, shadows     | 2–3 days   | Not started |
-| 3    | Walking: first-person controls and collisions        | 1–2 days   | Not started |
-| 4    | Details: sidewalks, curbs, parking lines, shop signs | 1–2 days   | Not started |
-| 5    | Saved tile cache: revisited areas load instantly     | 1 day      | Not started |
-| 6    | Finish line: checks and the "done when" walk         | half a day | Not started |
+| Step | Result                                               | Status      |
+| ---- | ---------------------------------------------------- | ----------- |
+| 0    | Foundations: workspace, rules, art, models           | Done        |
+| 1    | Coordinates in → grey roads and building boxes       | Not started |
+| 2    | Style pass: colours, ground, trees, sky, shadows     | Not started |
+| 3    | Walking: first-person controls and collisions        | Not started |
+| 4    | Details: sidewalks, curbs, parking lines, shop signs | Not started |
+| 5    | Saved tile cache: revisited areas load instantly     | Not started |
+| 6    | Finish line: checks and the "done when" walk         | Not started |
 
 ## Step 0 — Foundations (done)
 
