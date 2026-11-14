@@ -30,6 +30,14 @@
       "hex": "#5A3820",
       "cell": [5, 0]
     },
+    "trunk.birch": {
+      "hex": "#E9E4D8",
+      "cell": [6, 0]
+    },
+    "trunk.birch.mark": {
+      "hex": "#4A4743",
+      "cell": [7, 0]
+    },
     "grass": {
       "hex": "#7DB83A",
       "cell": [0, 1]
@@ -53,6 +61,18 @@
     "sand": {
       "hex": "#E6D3A3",
       "cell": [5, 1]
+    },
+    "flower.yellow": {
+      "hex": "#F6C93B",
+      "cell": [6, 1]
+    },
+    "flower.white": {
+      "hex": "#F7F3E8",
+      "cell": [7, 1]
+    },
+    "flower.center": {
+      "hex": "#E8902A",
+      "cell": [8, 1]
     },
     "asphalt": {
       "hex": "#55545A",

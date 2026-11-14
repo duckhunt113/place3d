@@ -126,7 +126,8 @@ type AssetEntry = {
   footprintM: [number, number];
   collider:
     | { type: "box"; size: [number, number, number] }
-    | { type: "cylinder"; radius: number; height: number };
+    | { type: "cylinder"; radius: number; height: number }
+    | { type: "none" }; // e.g. grass tufts and flowers you walk through
   triangles: number;
   source: string;
   licence: string; // CC0 preferred

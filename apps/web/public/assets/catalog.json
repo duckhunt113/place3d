@@ -1,4 +1,264 @@
 {
   "version": 1,
-  "assets": []
+  "assets": [
+    {
+      "id": "tree.leafy.s",
+      "file": "nature/tree_leafy_s.glb",
+      "category": "tree",
+      "attributes": {
+        "leafType": "broadleaved",
+        "size": "s",
+        "heightM": 4.9
+      },
+      "footprintM": [4.1, 4.0],
+      "collider": {
+        "type": "cylinder",
+        "radius": 0.3,
+        "height": 2.0
+      },
+      "triangles": 488,
+      "source": "in-house: made in Blender with Claude (concept in docs/concepts/)",
+      "licence": "own work"
+    },
+    {
+      "id": "tree.leafy.m",
+      "file": "nature/tree_leafy_m.glb",
+      "category": "tree",
+      "attributes": {
+        "leafType": "broadleaved",
+        "size": "m",
+        "heightM": 8.9
+      },
+      "default": true,
+      "footprintM": [6.6, 6.4],
+      "collider": {
+        "type": "cylinder",
+        "radius": 0.48,
+        "height": 3.3
+      },
+      "triangles": 668,
+      "source": "in-house: made in Blender with Claude (concept in docs/concepts/)",
+      "licence": "own work"
+    },
+    {
+      "id": "tree.leafy.l",
+      "file": "nature/tree_leafy_l.glb",
+      "category": "tree",
+      "attributes": {
+        "leafType": "broadleaved",
+        "size": "l",
+        "heightM": 13.7
+      },
+      "footprintM": [10.1, 10.1],
+      "collider": {
+        "type": "cylinder",
+        "radius": 0.74,
+        "height": 5.1
+      },
+      "triangles": 748,
+      "source": "in-house: made in Blender with Claude (concept in docs/concepts/)",
+      "licence": "own work"
+    },
+    {
+      "id": "tree.pine.m",
+      "file": "nature/tree_pine_m.glb",
+      "category": "tree",
+      "attributes": {
+        "leafType": "needleleaved",
+        "size": "m",
+        "heightM": 12.0
+      },
+      "footprintM": [4.4, 4.2],
+      "collider": {
+        "type": "cylinder",
+        "radius": 0.36,
+        "height": 3.2
+      },
+      "triangles": 316,
+      "source": "in-house: made in Blender with Claude (concept in docs/concepts/)",
+      "licence": "own work"
+    },
+    {
+      "id": "tree.birch.m",
+      "file": "nature/tree_birch_m.glb",
+      "category": "tree",
+      "attributes": {
+        "leafType": "broadleaved",
+        "genus": "Betula",
+        "size": "m",
+        "heightM": 10.0
+      },
+      "footprintM": [3.2, 2.8],
+      "collider": {
+        "type": "cylinder",
+        "radius": 0.26,
+        "height": 4.2
+      },
+      "triangles": 592,
+      "source": "in-house: made in Blender with Claude (concept in docs/concepts/)",
+      "licence": "own work"
+    },
+    {
+      "id": "bush.round",
+      "file": "nature/bush_round.glb",
+      "category": "bush",
+      "attributes": {
+        "shape": "round",
+        "heightM": 1.3
+      },
+      "default": true,
+      "footprintM": [1.7, 1.6],
+      "collider": {
+        "type": "cylinder",
+        "radius": 0.75,
+        "height": 1.27
+      },
+      "triangles": 140,
+      "source": "in-house: made in Blender with Claude (concept in docs/concepts/)",
+      "licence": "own work"
+    },
+    {
+      "id": "hedge.segment",
+      "file": "nature/hedge_segment.glb",
+      "category": "hedge",
+      "attributes": {
+        "lengthM": 2.0,
+        "heightM": 1.3,
+        "tilesAlong": "x"
+      },
+      "default": true,
+      "footprintM": [2.0, 1.0],
+      "collider": {
+        "type": "box",
+        "size": [2.0, 0.9, 1.25]
+      },
+      "triangles": 90,
+      "source": "in-house: made in Blender with Claude (concept in docs/concepts/)",
+      "licence": "own work"
+    },
+    {
+      "id": "detail.grass_tuft",
+      "file": "nature/detail_grass_tuft.glb",
+      "category": "detail.grass",
+      "attributes": {
+        "heightM": 0.24
+      },
+      "default": true,
+      "footprintM": [0.2, 0.2],
+      "collider": {
+        "type": "none"
+      },
+      "triangles": 14,
+      "source": "in-house: made in Blender with Claude (concept in docs/concepts/)",
+      "licence": "own work"
+    },
+    {
+      "id": "detail.flower_patch",
+      "file": "nature/detail_flower_patch.glb",
+      "category": "detail.flowers",
+      "attributes": {
+        "heightM": 0.32,
+        "colors": "yellow, white"
+      },
+      "default": true,
+      "footprintM": [0.3, 0.3],
+      "collider": {
+        "type": "none"
+      },
+      "triangles": 50,
+      "source": "in-house: made in Blender with Claude (concept in docs/concepts/)",
+      "licence": "own work"
+    },
+    {
+      "id": "prop.hydrant",
+      "file": "props/prop_hydrant.glb",
+      "category": "prop.hydrant",
+      "attributes": {
+        "heightM": 0.78
+      },
+      "default": true,
+      "footprintM": [0.4, 0.4],
+      "collider": {
+        "type": "cylinder",
+        "radius": 0.17,
+        "height": 0.78
+      },
+      "triangles": 192,
+      "source": "in-house: made in Blender with Claude (concept in docs/concepts/)",
+      "licence": "own work"
+    },
+    {
+      "id": "prop.bench",
+      "file": "props/prop_bench.glb",
+      "category": "prop.bench",
+      "attributes": {
+        "lengthM": 1.8,
+        "material": "wood"
+      },
+      "default": true,
+      "footprintM": [1.8, 0.5],
+      "collider": {
+        "type": "box",
+        "size": [1.8, 0.5, 0.84]
+      },
+      "triangles": 180,
+      "source": "in-house: made in Blender with Claude (concept in docs/concepts/)",
+      "licence": "own work"
+    },
+    {
+      "id": "prop.bin",
+      "file": "props/prop_bin.glb",
+      "category": "prop.bin",
+      "attributes": {
+        "heightM": 1.0
+      },
+      "default": true,
+      "footprintM": [0.54, 0.54],
+      "collider": {
+        "type": "cylinder",
+        "radius": 0.27,
+        "height": 1.0
+      },
+      "triangles": 144,
+      "source": "in-house: made in Blender with Claude (concept in docs/concepts/)",
+      "licence": "own work"
+    },
+    {
+      "id": "prop.stop_sign",
+      "file": "props/prop_stop_sign.glb",
+      "category": "sign.stop",
+      "attributes": {
+        "heightM": 2.3
+      },
+      "default": true,
+      "footprintM": [0.75, 0.1],
+      "collider": {
+        "type": "cylinder",
+        "radius": 0.04,
+        "height": 2.3
+      },
+      "triangles": 112,
+      "source": "in-house: made in Blender with Claude (concept in docs/concepts/)",
+      "licence": "own work"
+    },
+    {
+      "id": "sign.shop.blank",
+      "file": "signs/sign_shop_blank.glb",
+      "category": "sign.shop",
+      "attributes": {
+        "widthM": 3.0,
+        "heightM": 0.6,
+        "textFace": "sign:face"
+      },
+      "default": true,
+      "footprintM": [3.0, 0.12],
+      "collider": {
+        "type": "box",
+        "size": [3.0, 0.12, 0.6]
+      },
+      "triangles": 14,
+      "source": "in-house: made in Blender with Claude (concept in docs/concepts/)",
+      "licence": "own work"
+    }
+  ]
 }
