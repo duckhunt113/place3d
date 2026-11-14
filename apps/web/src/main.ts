@@ -2,13 +2,17 @@ import "./style.css";
 import {
   type AssetCatalog,
   FIXTURE_CENTRE,
+  findSpawn,
   type Palette,
   project,
+  type RoadPath,
   regionFor,
 } from "@somewhere/world";
+import { createPhysics } from "./physics/world.ts";
+import { createPlayer } from "./player/player.ts";
 import { createWorldView } from "./render/view.ts";
 import { formatLocation, parseLocation } from "./ui/location.ts";
-import { createPanel } from "./ui/panel.ts";
+import { createPanel, type ViewChoice } from "./ui/panel.ts";
 import { createWorldClient } from "./worker/client.ts";
 
 /** MVP: a fixed radius around the entered point. */
@@ -24,15 +28,39 @@ async function start(): Promise<void> {
     if (!response.ok) throw new Error(`Could not load ${file} (${response.status})`);
     return (await response.json()) as T;
   };
-  const [palette, catalog] = await Promise.all([
+  const [palette, catalog, physics] = await Promise.all([
     load<Palette>("palette.json"),
     load<AssetCatalog>("catalog.json"),
+    createPhysics(),
   ]);
 
   const view = createWorldView(app, palette, catalog, assetsUrl);
   const panel = createPanel(app);
   const world = createWorldClient();
+  const player = createPlayer(physics, view.canvas);
   let latest = 0;
+
+  /** The view the player chose. Walking only starts once the area is loaded and they have a place to stand. */
+  let wanted: ViewChoice = "walk";
+  let ready = false;
+  const showView = (): void => {
+    const walking = ready && wanted === "walk";
+    view.setMode(walking ? "walk" : "free");
+    player.setActive(walking);
+    panel.setView(walking ? "walk" : "free");
+  };
+  panel.onToggleView(() => {
+    wanted = wanted === "walk" ? "free" : "walk";
+    showView();
+  });
+  view.onFrame((seconds) => {
+    if (!ready) return;
+    // The player only moves while walking, but their eyes stay where they are in the free view.
+    if (wanted === "walk") player.update(seconds);
+    const eye = player.eye();
+    view.setEye(eye.pos, eye.yaw, eye.pitch);
+  });
+  showView();
 
   const go = async (text: string): Promise<void> => {
     const centre = parseLocation(text);
@@ -45,8 +73,14 @@ async function start(): Promise<void> {
     }
     const request = ++latest;
     const started = performance.now();
+    const middle = project(regionFor(centre), centre);
+    const streets: RoadPath[] = [];
+    // Show the area filling in from above; walking starts when everything is there.
+    ready = false;
+    showView();
     view.clear();
-    view.lookAt(project(regionFor(centre), centre), RADIUS_M);
+    physics.clear();
+    view.lookAt(middle, RADIUS_M);
     panel.setBusy(true);
     panel.setStatus("Loading the map...");
     let done = 0;
@@ -54,11 +88,19 @@ async function start(): Promise<void> {
       const summary = await world.loadArea(centre, RADIUS_M, (result) => {
         if (request !== latest) return;
         done++;
-        if (result.ok) view.addTile(result.tile);
-        else console.warn(`Tile ${result.key} failed: ${result.error}`);
+        if (result.ok) {
+          view.addTile(result.tile);
+          physics.setTile(result.key, result.tile.colliders, result.tile.ground);
+          streets.push(...result.tile.roads);
+        } else console.warn(`Tile ${result.key} failed: ${result.error}`);
         panel.setStatus(`Building tile ${done}...`);
       });
       if (request !== latest || !summary.finished) return;
+      // Start on the street nearest to the place asked for, and stay inside the loaded circle.
+      player.spawn(findSpawn(middle, streets));
+      player.setBounds({ centre: middle, radiusM: RADIUS_M });
+      ready = true;
+      showView();
       const seconds = ((performance.now() - started) / 1000).toFixed(1);
       const failed =
         summary.failed > 0

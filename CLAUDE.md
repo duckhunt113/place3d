@@ -2,7 +2,7 @@
 
 Somewhere is a web app. You enter coordinates and a radius, and the real area inside that radius is rebuilt from open map data (OpenStreetMap, plus Overture Maps building outlines where OpenStreetMap has none) as a bright, kid-friendly, stylized 3D world (faceted low-poly trees, smooth simplified buildings and streets; see the `art-style` skill). You then explore it in first person in the browser. Multiplayer and AI features come after the MVP.
 
-**Status:** MVP in progress. Steps 1 and 2 are built: enter coordinates and see Albertson Crescent with coloured houses and pitched roofs, real ground surfaces, trees and street props, a blue sky and shadows, viewed with a fly-around camera. Next is step 3, walking (build plan: `docs/14-mvp-roadmap.md`). Full project details live in `docs/` (start at `docs/README.md`).
+**Status:** MVP in progress. Steps 1 to 3 are built: enter coordinates and walk around Albertson Crescent in first person, with coloured houses and pitched roofs, real ground surfaces, trees and street props, a blue sky and shadows. Buildings, tree trunks and props are solid, and a free view (the F key) flies above the area. Next is step 4, details (build plan: `docs/14-mvp-roadmap.md`). Full project details live in `docs/` (start at `docs/README.md`).
 
 ## Current scope: MVP only
 
@@ -38,16 +38,16 @@ apps/web/            @somewhere/web: Vite + TypeScript + three + @dimforge/rapie
   src/ui/            coordinate input + map-link parser, status panel, map data credits (plain DOM)
   src/worker/        Web Worker that runs @somewhere/world off the main thread (through comlink)
   src/cache/         tile cache storage (IndexedDB), implements the world package's cache interface
-  src/render/        the ONLY place allowed to import three: view, meshes (one mesh per tile), assets + instances (models), sky, lighting
-  src/physics/       Rapier world + colliders built from generator data
-  src/player/        first-person controls, camera, player capsule
+  src/render/        the ONLY place allowed to import three: view (walking + free cameras), meshes (one mesh per tile), assets + instances (models), sky, lighting
+  src/physics/       the ONLY place allowed to import Rapier: the physics world, built from the world package's collider data
+  src/player/        walker (movement logic, tested), input (keyboard + mouse), player (ties them to the eyes)
   public/assets/     .glb asset kit + catalog.json (asset catalog) + palette.json (colours)
 packages/world/      @somewhere/world: plain TypeScript, engine-free
   src/data/          tiling, lat/lon -> metres, parsing, clipping, gap-filling, cache interface (no storage code)
     sources/         map data sources: saved files, Overpass (OSM), Overture (buildings)
     fixtures/        test-tile.json (small hand-made test tile); tiles/ = the saved Albertson Crescent tiles (generated)
   src/decide/        rule engine, geometry facts; rules/*.json = OSM tag rules as data (buildings, roads, areas, objects)
-  src/generator/     roads, ground and areas, buildings, roofs, placements -> plain mesh data + placements + colliders
+  src/generator/     roads, ground and areas, buildings, roofs, placements, colliders, spawn -> plain mesh data + placements + collider shapes
   src/assets/        asset catalog types + selector (requirements -> asset ID)
   src/util/          seeded RNG, geometry maths
 apps/server/         (later) Colyseus rooms + server-side fetch, decisions and tile storage
@@ -77,7 +77,7 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
 
 ## Hard rules
 
-1. **`packages/world` never imports three.js, Rapier or DOM APIs.** It outputs plain data: typed-array meshes, placements and collider shapes. Only `apps/web/src/render` turns that data into Three.js objects, and only `apps/web/src/physics` and `src/player` import Rapier. This keeps generation testable, lets it run on the server later, and makes the renderer swappable.
+1. **`packages/world` never imports three.js, Rapier or DOM APIs.** It outputs plain data: typed-array meshes, placements and collider shapes. Only `apps/web/src/render` turns that data into Three.js objects, and only `apps/web/src/physics` imports Rapier (`src/player` talks to it through the small `Character` interface). This keeps generation testable, lets it run on the server later, and makes the renderer swappable.
 2. **Deterministic generation.** Never use `Math.random()` in generation code. Use the seeded RNG from `packages/world/src/util`, seeded from stable **global** values (feature id such as `way/123` or `overture/<id>`, tile id, or global Web Mercator coordinates rounded to a grid), never from local x/z, which depend on the region origin. The same input must give the same world on every machine. Add or keep tests for this.
 3. **Real units and projection.** 1 unit = 1 metre. Axes match Three.js (y up, right-handed): x = east, z = south, so north is −z.
    - **Region:** the zoom-10 map tile containing the entered point (about 28 km across in southern Ontario). The same place always gets the same region; never derive it from the player's position, the session or the device.
@@ -107,7 +107,7 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
    - one shadow-casting light, pixel ratio capped at 1.5–2.
    - Merge generated geometry per tile chunk and material, and instance repeated assets. In practice: the world package outputs one mesh per tile and palette colour; the renderer joins them into **one mesh per tile** with the colour written into each corner (vertex colours), and flattens each model the same way so every kind of model is one instanced draw per tile. Everything shares one material.
    - Do heavy generation in a Web Worker.
-   - Physics uses simple colliders, never visual meshes.
+   - Physics uses simple colliders, never visual meshes: a box (or a box per wall) for a building, the catalog's box or cylinder for a model, and a grid of ground heights per tile. Never one huge shape: physics loses precision on shapes kilometres wide.
 8. **Kid-safe.** Anything user-typed or AI-generated must be filtered (relevant once prompts or chat exist).
 9. **Asset conventions:**
    - `.glb`; follow the `art-style` skill (faceted foliage, smooth everything else)
@@ -144,7 +144,7 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
 - **Bugs:** every bug fix adds a test that fails without the fix.
 - **Assertions:** check real values with tolerances where maths is involved (`toBeCloseTo`), not just "is defined" or "doesn't throw".
 - **Speed:** the whole suite should run in a few seconds; no sleeps or timers.
-- **Web tests:** `apps/web` uses Vitest too, for plain logic only (first one: `src/ui/location.test.ts`). Keep that logic in files that don't import three or touch the DOM, so the tests need no browser.
+- **Web tests:** `apps/web` uses Vitest too, for plain logic only (`src/ui/location.test.ts`, `src/player/walker.test.ts`). Keep that logic in files that don't import three or touch the DOM, so the tests need no browser. Walking is tested against the real physics engine, which runs in Node: speeds, walls, tree trunks, jumping, slopes.
 - **Done means green:** before calling any change finished, run `pnpm lint && pnpm typecheck && pnpm test` and fix any failure. Never delete, skip (`.skip`) or weaken a failing test to make it pass unless the behaviour was intentionally changed, and say so when you do.
 
 ## Working style
@@ -162,7 +162,11 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
 - **Generated files** are never edited by hand; change their source and re-run the command: `palette.png` and `docs/palette-preview.html` (`pnpm palette`), `packages/world/src/data/fixtures/tiles/` (`pnpm fixtures`).
 - **One generator file per kind of shape, not per kind of thing.** New geometry gets a file (`roofs.ts` for roofs); a new thing that reuses existing geometry gets a rule instead (a stream is a ribbon like a road, so it needs no `water.ts`).
 - **Scatter is seeded by a fixed world grid.** Scattered models use one candidate spot per cell of a global Web Mercator grid, seeded by the cell's numbers, and each spot belongs to the one tile that contains it. Never scatter from local x/z or per tile.
-- **Three.js stays in `apps/web/src/render`:** `main.ts`, `ui/` and `worker/` talk to the renderer through the small interface `createWorldView` returns.
+- **Three.js stays in `apps/web/src/render`:** `main.ts`, `ui/`, `worker/` and `player/` talk to the renderer through the small interface `createWorldView` returns (the player hands over an eye position and two angles, nothing more).
+- **Directions are measured clockwise from north.** A yaw or bearing of 0 looks north (−z) and a quarter turn looks east (+x), everywhere: spawn points, the player, the sun. Only `render/` converts to three.js's own angles.
+- **Ground height comes from one function.** Anything that stands on the ground asks `groundHeightAt(x, z)` in `generator/ground.ts` (flat for now). Terrain later changes that one answer and the ground grid's heights, not the callers.
+- **Two views.** Walking is the game; the free view is the fly-around camera for looking at the area from above. `main.ts` owns which one is on (the panel button or the F key). The player stays where they are while the free view is on.
+- **How walking feels is data in one place:** the `PLAYER` settings in `apps/web/src/player/walker.ts` (speeds, jump, sizes). Movement runs in fixed 1/60 s steps, so it is the same at any frame rate.
 - **Biome** is the only linter and formatter (config in `biome.json`: 2 spaces, double quotes, semicolons, 100-char lines). Don't add ESLint or Prettier. Run `pnpm fix` before committing; don't silence a lint rule without a short comment saying why (`// biome-ignore lint/<rule>: <reason>`).
 - **Build plan:** `docs/14-mvp-roadmap.md` lists the MVP work in order. Unless asked otherwise, work on its "Next up" item; when an item is done and green, tick it and update "Next up" in the same change.
 - **Skill hand-over folder:** a Claude session that can't write into `.claude/` puts updated skills in `claude-skill-updates/<skill>/SKILL.md` at the repo root. It is gitignored (so Biome skips it too) and temporary: copy each file into `.claude/skills/<skill>/`, then delete the folder.

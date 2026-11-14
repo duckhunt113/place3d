@@ -139,6 +139,35 @@ export type Placement = {
   tint?: string;
 };
 
+/**
+ * A simple solid shape for the physics, never a visual mesh. Local metres; `centre` is the
+ * middle of the shape. Boxes may be turned around the upright axis (`rotY`, as for placements).
+ */
+export type Collider =
+  | { shape: "box"; centre: [number, number, number]; half: [number, number, number]; rotY: number }
+  | { shape: "cylinder"; centre: [number, number, number]; radius: number; halfHeight: number };
+
+/**
+ * The solid ground under one tile: a square grid of heights the player stands on. Local
+ * metres. Flat for now; terrain later only changes the heights.
+ */
+export type GroundGrid = {
+  /** The middle of the grid, as [x, z]. */
+  centre: Vec2;
+  /** Its full width (x) and depth (z). */
+  size: Vec2;
+  /** How many cells along each side. There is one more height than cells each way. */
+  cells: number;
+  /**
+   * Height at every grid corner, row by row: rows run north to south (growing z), and within
+   * a row west to east (growing x). Corner (row, column) is at `row * (cells + 1) + column`.
+   */
+  heights: Float32Array;
+};
+
+/** A road's centre line and width, for things that need to know where the streets are (spawning). */
+export type RoadPath = { line: Vec2[]; widthM: number };
+
 export type MeshData = {
   material: string;
   positions: Float32Array;
@@ -167,6 +196,7 @@ export type Palette = {
 export type AssetId = string;
 
 export type AssetCollider =
+  /** `size` is [width (x), depth (z), height (y)] of the unturned model, in metres. */
   | { type: "box"; size: [number, number, number] }
   | { type: "cylinder"; radius: number; height: number }
   | { type: "none" };

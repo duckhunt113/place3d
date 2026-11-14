@@ -18,7 +18,7 @@ Enter coordinates → a 300 m area appears in our stylized look → you can walk
    - colour by building type
 6. **Pre-made kit (small)**: about 5 trees, a bush, a few street props and a blank shop-sign board, in the `art-style` look, all listed in the asset catalog.
 7. **Placement**: trees from OSM points plus a scattered fill in yards and parks; a shop-sign board on each retail building with the real shop name drawn on it.
-8. **Player**: first-person camera at 1.7 m eye height; WASD + mouse look (pointer lock); Shift to run; Space to jump. Capsule collisions with buildings and trees (Rapier).
+8. **Player**: first-person camera at 1.7 m eye height; WASD + mouse look (pointer lock); Shift to run; Space to jump. Capsule collisions with buildings and trees (Rapier). A free view (button or F key) flies above the area instead.
 9. **Look**: bright sky, soft shadows, warm sunlight.
 10. **Credit**: "© OpenStreetMap contributors, Overture Maps Foundation" visible on screen.
 

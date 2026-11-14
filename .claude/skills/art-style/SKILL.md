@@ -83,8 +83,12 @@ const sun = new THREE.DirectionalLight(0xffe6c0, 3.2);
 // Sky blue above, grassy bounce below. Strong on purpose: it keeps shaded walls and the
 // ground under trees light and slightly blue, never black.
 const sky = new THREE.HemisphereLight(0xbfd9f5, 0x8a9a5b, 2.2);
+sun.shadow.radius = 2.5; // blurs shadow edges a little, hiding the shadow map's pixel steps
+// Walking: shadows cover 120 m around the player (about 6 cm per shadow pixel) and follow them.
+// Free view: shadows cover the whole loaded area.
 scene.fog = new THREE.Fog(0xcfe3f5, 120, 450); // walking view
-// The fly-around overview camera sits hundreds of metres up and uses Fog(0xcfe3f5, 900, 6000).
+// The free view sits hundreds of metres up and uses Fog(0xcfe3f5, 900, 6000).
+// Cameras: walking 70 degrees field of view, free view 55.
 ```
 
 If you retune by eye against the reference images, update these numbers here.

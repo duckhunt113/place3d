@@ -6,10 +6,18 @@ import * as THREE from "three";
 const SKY_TOP = 0x5b9be6;
 const SKY_HORIZON = 0xa9cdf2;
 const HAZE = 0xcfe3f5;
-/** Haze for the fly-around overview camera, which sits hundreds of metres up. */
-const OVERVIEW_HAZE = { near: 900, far: 6000 };
+/** Haze by view: light and close while walking; far away for the free view, hundreds of metres up. */
+const HAZE_RANGE = {
+  walk: { near: 120, far: 450 },
+  free: { near: 900, far: 6000 },
+} as const;
 
-export function addSky(scene: THREE.Scene): void {
+export type Sky = {
+  /** Sets how near the haze starts, to suit walking or the free view. */
+  setHaze(view: keyof typeof HAZE_RANGE): void;
+};
+
+export function addSky(scene: THREE.Scene): Sky {
   const dome = new THREE.Mesh(
     new THREE.SphereGeometry(1, 32, 16),
     new THREE.ShaderMaterial({
@@ -45,5 +53,12 @@ export function addSky(scene: THREE.Scene): void {
   dome.frustumCulled = false;
   dome.renderOrder = -1;
   scene.add(dome);
-  scene.fog = new THREE.Fog(HAZE, OVERVIEW_HAZE.near, OVERVIEW_HAZE.far);
+  const haze = new THREE.Fog(HAZE, HAZE_RANGE.free.near, HAZE_RANGE.free.far);
+  scene.fog = haze;
+  return {
+    setHaze(view) {
+      haze.near = HAZE_RANGE[view].near;
+      haze.far = HAZE_RANGE[view].far;
+    },
+  };
 }

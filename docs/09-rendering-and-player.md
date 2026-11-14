@@ -54,11 +54,13 @@ Bigger areas later: stream tiles as the player walks and unload those behind (Ho
 
 ## First-person player
 
-- Camera at **1.7 m** eye height; an invisible **capsule** collider (Rapier).
+- Camera at **1.7 m** eye height; an invisible **capsule** collider (Rapier), 1.8 m tall and 0.6 m wide.
 - Controls:
-  - WASD to move, mouse to look (Pointer Lock: click to capture, Esc to release)
-  - Shift to run, Space to jump.
-- Start from the official Three.js `games_fps` example for the controls pattern; use Rapier for physics.
+  - WASD or the arrow keys to move, mouse to look (Pointer Lock: click to capture, Esc to release; dragging with the button held also works)
+  - Shift to run, Space to jump
+  - F, or the button in the panel, switches to the **free view** and back.
+- Speeds: walking 4 m/s, running 8 m/s, a jump of about 0.9 m. A real walk is about 1.4 m/s; games walk faster so a street does not feel endless. All of these are the `PLAYER` settings in `player/walker.ts`.
+- Rapier's character controller moves the capsule: it slides along walls, climbs steps up to 0.3 m (curbs, step 4) and stays on the ground on slopes.
 - First person makes these matter more:
   - **Scale**: real metres everywhere (see reference sizes in [07-assets.md](07-assets.md)).
   - **Close-up surfaces**: textured or colour-varied asphalt, grass and sidewalk.
@@ -71,14 +73,16 @@ Bigger areas later: stream tiles as the player walks and unload those behind (Ho
 
 ## Physics colliders
 
-| Thing     | Collider                                                     |
-| --------- | ------------------------------------------------------------ |
-| Buildings | Box (or convex hull of the footprint, extruded)              |
-| Trees     | Cylinder around the trunk only, so you can walk under leaves |
-| Ground    | Flat plane in the MVP; heightfield with terrain              |
-| Props     | Simple box or cylinder per asset                             |
+| Thing     | Collider                                                                                   |
+| --------- | ------------------------------------------------------------------------------------------ |
+| Buildings | One turned box when the outline nearly fills its rectangle; otherwise a thin box per wall  |
+| Trees     | Cylinder around the trunk only, so you can walk under leaves                               |
+| Ground    | A grid of heights per tile (32 by 32 cells, about 7 m each); all zero until terrain exists |
+| Props     | Simple box or cylinder per asset, from the catalog                                         |
 
 Build colliders from the generator output (plain data), not from Three.js meshes.
+
+Why the ground is a grid and not one big flat slab: a slab several kilometres wide made the player sink a few centimetres into it and then fall through, because physics engines lose precision on very large shapes. Small cells fix that, and terrain needs the same grid later.
 
 ## What the MVP renderer does (step 2)
 
@@ -86,7 +90,16 @@ Build colliders from the generator output (plain data), not from Three.js meshes
 - **Models.** `render/assets.ts` loads only the `.glb` files a tile uses, flattens each into one piece of geometry and turns its `pal:` materials into vertex colours. `render/instances.ts` draws every copy of a model in a tile as one instanced mesh. Everything shares one material.
 - **Cost on the Albertson Crescent area (14 tiles):** about 17,000 generated triangles and about 800,000 model triangles (1,783 trees, bushes and props), in roughly 130 draw calls. That is inside the desktop budget; the mobile budget needs fewer or simpler trees (see "LOD" above).
 - **Sky and light** (`render/sky.ts`, `render/lighting.ts`): a gradient sky dome, one warm sun that casts the shadows, a sky-blue fill light. The numbers live in the `art-style` skill.
-- **Shadows** use one 4096 px map stretched over the whole loaded area, about 30 cm per pixel. Fine from above; when walking (step 3) the shadow area should follow the player so nearby shadows are sharp.
-- **Haze** is set for the fly-around camera (far away). Step 3 switches to the walking values in the skill.
+- **Shadows** use one 4096 px map. In the free view it is stretched over the whole loaded area, about 30 cm per pixel. While walking it covers only 120 m around the player, about 6 cm per pixel, and moves along in 16 m steps.
+- **Haze** has two settings: close and light while walking, far away for the free view.
 
 Not done yet, by choice: clouds, grass tufts and flower details, level-of-detail for far trees.
+
+## How walking works (step 3)
+
+1. **Collider data** (`packages/world/src/generator/colliders.ts`): each built tile carries its solid shapes and its ground grid as plain numbers, next to its meshes.
+2. **Physics world** (`apps/web/src/physics/world.ts`): turns those numbers into Rapier shapes, tile by tile. The only file that imports Rapier. Rapier is a big download (about 1.7 MB compressed), so it loads as its own file, side by side with the rest.
+3. **Walker** (`player/walker.ts`): turns "forwards, run, jump, facing this way" into a position. Fixed 1/60 s steps, its own gravity, kept inside the loaded circle. No keyboard and no camera in it, so it has tests.
+4. **Input** (`player/input.ts`): keyboard and mouse. **Player** (`player/player.ts`): ties input and walker together and gives the camera its eye position. If the player ever falls off the world they return to the start.
+5. **Spawn** (`generator/spawn.ts`): the player starts on the street nearest to the entered coordinates, looking along it. A street is always clear ground.
+6. **Two views** (`render/view.ts`): the player's eyes, and the free view, which starts behind and above the player. While an area loads you watch it fill in from above; walking starts when every tile is there.

@@ -8,16 +8,20 @@ import { decideArea, decideBuilding, decideObject, decideRoad } from "../decide/
 import type { RuleEngine } from "../decide/engine.ts";
 import { FactFinder } from "../decide/facts.ts";
 import type {
+  Collider,
   ColorName,
+  GroundGrid,
   LatLon,
   MeshData,
   Placement,
   Region,
+  RoadPath,
   TileId,
   Vec2,
   WorldTile,
 } from "../types.ts";
 import { addBuilding } from "./buildings.ts";
+import { buildingColliders, groundCollider, placementColliders } from "./colliders.ts";
 import { addArea, addGround } from "./ground.ts";
 import { MeshSet } from "./mesh.ts";
 import { type MappedObject, placeAssets, type RoadShape, type ScatterArea } from "./placements.ts";
@@ -34,6 +38,12 @@ export type TileMeshes = {
   meshes: MeshData[];
   /** Where pre-made models go (asset ids from the catalog). Empty when no catalog was given. */
   placements: Placement[];
+  /** Solid shapes for the physics: buildings, tree trunks, props. */
+  colliders: Collider[];
+  /** The solid ground under the tile. */
+  ground: GroundGrid;
+  /** Streets a player can stand on (not footpaths), cut at the tile's edges. */
+  roads: RoadPath[];
   counts: {
     buildings: number;
     roads: number;
@@ -56,16 +66,13 @@ export function buildTile(
   const meshes = new MeshSet();
   const local = (p: LatLon): Vec2 => project(region, p);
   const box = tileBounds(tile.id);
-  addGround(
-    meshes,
-    [
-      local({ lat: box.north, lon: box.west }),
-      local({ lat: box.north, lon: box.east }),
-      local({ lat: box.south, lon: box.east }),
-      local({ lat: box.south, lon: box.west }),
-    ],
-    GROUND_COLOUR,
-  );
+  const corners: [Vec2, Vec2, Vec2, Vec2] = [
+    local({ lat: box.north, lon: box.west }),
+    local({ lat: box.north, lon: box.east }),
+    local({ lat: box.south, lon: box.east }),
+    local({ lat: box.south, lon: box.west }),
+  ];
+  addGround(meshes, corners, GROUND_COLOUR);
 
   const facts = new FactFinder(tile.features);
   let buildings = 0;
@@ -75,6 +82,7 @@ export function buildTile(
   // Every building outline that touches the tile, including neighbours' buildings that reach in.
   const outlines: Vec2[][] = (tile.blockers ?? []).map((ring) => ring.map(local));
   const objects: MappedObject[] = [];
+  const colliders: Collider[] = [];
   for (const feature of tile.features) {
     if (feature.kind === "area") {
       const decision = decideArea(engine, feature);
@@ -88,7 +96,10 @@ export function buildTile(
       const decision = decideBuilding(engine, feature, facts.forBuilding(feature));
       const footprint = feature.footprint.map(local);
       outlines.push(footprint);
-      if (addBuilding(meshes, footprint, decision)) buildings++;
+      if (addBuilding(meshes, footprint, decision)) {
+        buildings++;
+        colliders.push(...buildingColliders(footprint, decision.heightM));
+      }
     } else if (feature.kind === "road") {
       const decision = decideRoad(engine, feature);
       if (!decision) continue;
@@ -117,6 +128,11 @@ export function buildTile(
       )
     : [];
 
+  if (selector) colliders.push(...placementColliders(placements, selector));
+  const streets: RoadPath[] = roadShapes
+    .filter((road) => road.decision.kind !== "path")
+    .map((road) => ({ line: road.line, widthM: road.decision.widthM }));
+
   const data = meshes.toMeshData();
   const triangles = data.reduce((sum, mesh) => sum + mesh.indices.length / 3, 0);
   return {
@@ -124,6 +140,9 @@ export function buildTile(
     key: tileKey(tile.id),
     meshes: data,
     placements,
+    colliders,
+    ground: groundCollider(corners),
+    roads: streets,
     counts: {
       buildings,
       roads,

@@ -5,7 +5,7 @@ You type coordinates, and everything inside a radius around them is rebuilt in 3
 (OpenStreetMap, plus Overture Maps for buildings it lacks): roads, buildings with real shop names, parks, trees. You explore it in first person in your web
 browser. Exploring with friends comes after the MVP.
 
-Status: **MVP in progress.** Steps 1 and 2 are built (the area appears with coloured houses, roofs, ground, trees, sky and shadows); next is step 3, walking, in [14-mvp-roadmap.md](14-mvp-roadmap.md).
+Status: **MVP in progress.** Steps 1 to 3 are built (the area appears with coloured houses, roofs, ground, trees, sky and shadows, and you can walk around it in first person); next is step 4, details, in [14-mvp-roadmap.md](14-mvp-roadmap.md).
 
 ## Contents
 

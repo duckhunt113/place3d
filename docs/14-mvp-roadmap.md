@@ -2,7 +2,7 @@
 
 The build plan for the MVP (v0.1), in the order to build it. What the MVP includes is in [02-mvp.md](02-mvp.md); what comes after it is in [12-roadmap.md](12-roadmap.md).
 
-**Next up:** 3.1 Collider data.
+**Next up:** 4.1 Curbs and sidewalks.
 
 How to use this file:
 
@@ -18,7 +18,7 @@ How to use this file:
 | 0    | Foundations: workspace, rules, art, models           | Done        |
 | 1    | Coordinates in → grey roads and building boxes       | Done        |
 | 2    | Style pass: colours, ground, trees, sky, shadows     | Done        |
-| 3    | Walking: first-person controls and collisions        | Not started |
+| 3    | Walking: first-person controls and collisions        | Done        |
 | 4    | Details: sidewalks, curbs, parking lines, shop signs | Not started |
 | 5    | Saved tile cache: revisited areas load instantly     | Not started |
 | 6    | Finish line: checks and the "done when" walk         | Not started |
@@ -83,10 +83,12 @@ Goal: the area looks like the `art-style` references.
 
 Goal: explore the area on foot, in first person.
 
-- [ ] 3.1 Collider data: `generator/colliders.ts`. Boxes for buildings, trunk cylinders from each asset's catalog collider, flat ground
-- [ ] 3.2 Physics world: `physics/` starts Rapier and builds the colliders from that data, never from visual meshes
-- [ ] 3.3 Player: `player/` with a capsule, eye height 1.7 m, WASD, mouse look with pointer lock, Shift to run, Space to jump
-- [ ] 3.4 Spawn: start at the entered coordinates on clear ground; the debug camera becomes a development-only toggle. Switch the haze to the walking values and make the shadow area follow the player, so nearby shadows are sharp
+- [x] 3.1 Collider data: `generator/colliders.ts`. Boxes for buildings (one box, or one per wall for L-shapes), trunk cylinders and prop boxes from each asset's catalog collider, and a flat grid of ground heights per tile
+- [x] 3.2 Physics world: `physics/` starts Rapier and builds the colliders from that data, never from visual meshes
+- [x] 3.3 Player: `player/` with a capsule, eye height 1.7 m, WASD, mouse look with pointer lock, Shift to run, Space to jump. Walking 4 m/s, running 8 m/s
+- [x] 3.4 Spawn: `generator/spawn.ts` starts the player on the street nearest to the entered coordinates. The fly-around camera stays as the **free view** (panel button or F). Walking uses the close haze, and the shadow area follows the player so nearby shadows are sharp
+
+Left for later, by choice: house walls stay blank (no painted windows or doors).
 
 **Done when:** you can walk along Albertson Crescent, buildings and tree trunks stop you, and you can walk under the leaves.
 

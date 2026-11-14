@@ -458,11 +458,26 @@ describe("buildTile on the test tile", () => {
     }
   });
 
+  it("gives the physics a solid shape for every building, and the streets for spawning", () => {
+    // Seven buildings, each one box or a box per wall; no models without a catalog.
+    expect(built.colliders.length).toBeGreaterThanOrEqual(7);
+    for (const collider of built.colliders) expect(collider.shape).toBe("box");
+    // Solid ground under the whole tile.
+    expect(built.ground.heights.length).toBe((built.ground.cells + 1) ** 2);
+    expect(built.ground.size[0]).toBeGreaterThan(150);
+    // Streets only: the fixture's footway is left out.
+    expect(built.roads).toHaveLength(3);
+    for (const road of built.roads) expect(road.widthM).toBeGreaterThan(2);
+  });
+
   it("places no models without a catalog, and the mapped and scattered ones with it", () => {
     expect(built.placements).toEqual([]);
     const selector = new AssetSelector(realCatalog as unknown as AssetCatalog);
     const withModels = buildTile(tile, region, engine, selector);
     expect(withModels.meshes).toEqual(built.meshes);
+    // Tree trunks and props add their own solid shapes on top of the buildings'.
+    expect(withModels.colliders.length).toBeGreaterThan(built.colliders.length);
+    expect(withModels.colliders.some((c) => c.shape === "cylinder")).toBe(true);
     expect(withModels.counts.placements).toBe(withModels.placements.length);
     expect(withModels.placements.length).toBeGreaterThan(20);
     expect(buildTile(tile, region, createRuleEngine(), selector).placements).toEqual(

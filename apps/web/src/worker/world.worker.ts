@@ -105,12 +105,15 @@ const api = {
           summary.placements += tile.counts.placements;
           summary.triangles += tile.counts.triangles;
           // Hand the big number arrays over instead of copying them.
-          const buffers = tile.meshes.flatMap((m) => [
-            m.positions.buffer,
-            m.normals.buffer,
-            m.uvs.buffer,
-            m.indices.buffer,
-          ]);
+          const buffers = [
+            ...tile.meshes.flatMap((m) => [
+              m.positions.buffer,
+              m.normals.buffer,
+              m.uvs.buffer,
+              m.indices.buffer,
+            ]),
+            tile.ground.heights.buffer,
+          ];
           await onTile(transfer({ key, ok: true, tile }, buffers));
         } catch (error) {
           summary.failed++;

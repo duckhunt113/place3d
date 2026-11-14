@@ -13,6 +13,8 @@ const SUN_HEIGHT_DEG = 40;
 const SUN_BEARING_DEG = 235;
 /** CLAUDE.md, hard rule 7: one shadow-casting light. Its map is shared by the whole view. */
 const SHADOW_MAP_SIZE = 4096;
+/** How far shadow edges are blurred, in shadow-map pixels. */
+const SHADOW_SOFTNESS = 2.5;
 
 export type Lighting = {
   /** Points the shadows at the area around a centre (local metres), `radiusM` wide. */
@@ -27,6 +29,8 @@ export function createLighting(scene: THREE.Scene): Lighting {
   sun.shadow.mapSize.set(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.08;
+  // Blur shadow edges a little, which hides the shadow map's pixel steps on walls.
+  sun.shadow.radius = SHADOW_SOFTNESS;
   scene.add(sun, sun.target);
 
   // Local axes: x east, z south, y up. A bearing is measured clockwise from north.

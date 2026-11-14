@@ -42,6 +42,14 @@ export {
 } from "./data/tiles.ts";
 export { RuleEngine } from "./decide/engine.ts";
 export { createRuleEngine } from "./decide/rules/index.ts";
+export {
+  buildingColliders,
+  GROUND_CELLS,
+  groundCollider,
+  placementColliders,
+} from "./generator/colliders.ts";
+export { groundHeightAt } from "./generator/ground.ts";
+export { findSpawn, type Spawn } from "./generator/spawn.ts";
 export { buildTile, type TileMeshes } from "./generator/tile.ts";
 export type * from "./types.ts";
 export { createRng, type Rng } from "./util/rng.ts";

@@ -160,7 +160,7 @@ MVP: a small catalog (about 5 trees, a few props, a blank shop sign) and the sel
 - **Low-poly budgets:** trees 300–800 triangles; props 50–300; wall pieces under 200.
 - **Real scale:** 1 unit = 1 metre; origin at the base centre; all assets face +Z (the glTF default).
 - **Reference sizes:** lane 3.5 m, curb 0.15 m, door 2.1 m, one storey 3 m, eye height 1.7 m.
-- **Collision:** each asset has a simple matching shape (box or cylinder) for physics.
+- **Collision:** each asset has a simple matching shape (box or cylinder) for physics, or `none` for things you walk through. A box's `size` is `[width (x), depth (z), height (y)]` of the unturned model; a cylinder stands upright with its `radius` and `height`. Both stand on the ground at the model's origin and grow with the placement's scale. A tree's cylinder is its trunk only, so you can walk under the leaves.
 - **Naming:** files like `tree_leafy_m.glb`, `prop_hydrant.glb`, `kit_storefront_bay.glb`; catalog IDs lowercase and dotted, like `tree.leafy.oak.m`.
 - **Format:** `.glb` (glTF binary). It loads directly in Three.js and imports into any other engine later.
 - **Ground materials (generated surfaces):**

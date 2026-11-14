@@ -11,8 +11,8 @@ somewhere/
       src/worker/        Web Worker running @somewhere/world off the main thread
       src/cache/         tile cache storage (IndexedDB)
       src/render/        the ONLY place that imports three.js (view, meshes, assets, instances, sky, lighting)
-      src/physics/       Rapier world + colliders from generator data
-      src/player/        first-person camera, controls, player capsule
+      src/physics/       Rapier world built from the world package's collider data
+      src/player/        walking logic, keyboard + mouse input, the player's eyes
       public/assets/     .glb asset kit + catalog.json + palette.json
     server/              (later) Colyseus rooms + server-side fetch, decisions, tile storage
   packages/
@@ -174,7 +174,7 @@ type AssetEntry = {
   default?: boolean; // the category's fallback when nothing else matches
   footprintM: [number, number];
   collider:
-    | { type: "box"; size: [number, number, number] }
+    | { type: "box"; size: [number, number, number] } // [width x, depth z, height y]
     | { type: "cylinder"; radius: number; height: number }
     | { type: "none" }; // e.g. grass tufts and flowers you walk through
   triangles: number;
@@ -286,6 +286,25 @@ type WorldTile = {
 // Decisions are looked up by feature id (see Decision). Meshes, placements and
 // colliders are generated each time a tile loads and are never stored.
 
+// Solid shapes for the physics. Plain data in local metres; `apps/web/src/physics` turns them
+// into Rapier shapes. Never built from the visual meshes.
+type Collider =
+  | { shape: "box"; centre: [number, number, number]; half: [number, number, number]; rotY: number }
+  | { shape: "cylinder"; centre: [number, number, number]; radius: number; halfHeight: number };
+// The ground under one tile: a grid of heights (flat for now; terrain only changes the numbers).
+type GroundGrid = {
+  centre: Vec2; // [x, z]
+  size: Vec2; // full width (x) and depth (z)
+  cells: number; // cells along each side
+  heights: Float32Array; // (cells + 1) squared, row by row, north to south, each row west to east
+};
+type RoadPath = { line: Vec2[]; widthM: number };
+// Where the player starts: on the nearest street to the place asked for, facing along it.
+declare function findSpawn(
+  target: Vec2,
+  roads: RoadPath[],
+): { pos: [number, number, number]; yaw: number };
+
 // The two steps the worker runs for each tile:
 declare function prepareTile(data: TileData, generatedAt: string): WorldTile; // parse (OSM, then gap-fill buildings) + own/clip
 // With a selector (made from the asset catalog) buildTile also places models.
@@ -300,6 +319,9 @@ type TileMeshes = {
   key: string; // "17/x/y"
   meshes: MeshData[]; // one per palette colour; the renderer joins them into one mesh per tile
   placements: Placement[]; // models: asset id, position, turn, size
+  colliders: Collider[]; // solid shapes: buildings, tree trunks, props
+  ground: GroundGrid; // the solid ground under the tile
+  roads: RoadPath[]; // streets (not footpaths), for choosing where the player starts
   counts: {
     buildings: number;
     roads: number;

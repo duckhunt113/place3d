@@ -58,6 +58,13 @@ body {
   cursor: pointer;
 }
 
+.panel .view-toggle {
+  margin-top: 8px;
+  background: #fff;
+  color: #23397a;
+  border: 1px solid #23397a;
+}
+
 .panel button:disabled {
   opacity: 0.5;
   cursor: default;

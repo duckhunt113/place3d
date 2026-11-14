@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createRuleEngine } from "../../decide/rules/index.ts";
+import { findSpawn } from "../../generator/spawn.ts";
 import { buildTile } from "../../generator/tile.ts";
+import type { Collider, RoadPath } from "../../types.ts";
 import { prepareTile } from "../prepare.ts";
-import { regionFor } from "../project.ts";
+import { project, regionFor } from "../project.ts";
 import { TILE_FORMAT_VERSION } from "../sources/overpass.ts";
 import { parseTileKey, tileAt, tileKey, tilesInRadius } from "../tiles.ts";
 import { FIXTURE_CENTRE, fixtureTileKeys, loadFixtureTile } from "./tiles/index.ts";
@@ -51,5 +53,38 @@ describe("saved tiles", () => {
     }
     expect(roads).toBeGreaterThan(0);
     expect(buildings).toBeGreaterThan(0);
+  });
+
+  it("give the player a street to start on, close to the centre and clear of buildings", async () => {
+    if (!FIXTURE_CENTRE) throw new Error("no saved tiles yet: run `pnpm fixtures`");
+    const region = regionFor(FIXTURE_CENTRE);
+    const engine = createRuleEngine();
+    const streets: RoadPath[] = [];
+    const solids: Collider[] = [];
+    for (const key of fixtureTileKeys) {
+      const data = await loadFixtureTile(key);
+      if (!data) throw new Error(`saved tile ${key} did not load`);
+      const built = buildTile(prepareTile(data, data.fetchedAt), region, engine);
+      streets.push(...built.roads);
+      solids.push(...built.colliders);
+      // Every tile has solid ground under it.
+      expect(built.ground.heights).toHaveLength((built.ground.cells + 1) ** 2);
+    }
+    const centre = project(region, FIXTURE_CENTRE);
+    const spawn = findSpawn(centre, streets);
+    expect(Math.hypot(spawn.pos[0] - centre[0], spawn.pos[2] - centre[1])).toBeLessThan(100);
+    // No building's solid shape comes within a metre of the starting point.
+    for (const solid of solids) {
+      if (solid.shape !== "box") continue;
+      const dx = spawn.pos[0] - solid.centre[0];
+      const dz = spawn.pos[2] - solid.centre[2];
+      const cos = Math.cos(solid.rotY);
+      const sin = Math.sin(solid.rotY);
+      // The starting point, seen from the box's own unturned position.
+      const alongX = dx * cos - dz * sin;
+      const alongZ = dx * sin + dz * cos;
+      const inside = Math.abs(alongX) < solid.half[0] + 1 && Math.abs(alongZ) < solid.half[2] + 1;
+      expect(inside).toBe(false);
+    }
   });
 });

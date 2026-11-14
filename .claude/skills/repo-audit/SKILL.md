@@ -37,7 +37,7 @@ Record any failure as a finding (with the exact error).
 
 - Folders and package names match the layout (`@somewhere/web`, `@somewhere/world`).
 - `packages/world` never imports `three`, `@dimforge/rapier3d-compat` or DOM APIs; its tsconfig `lib` excludes DOM.
-- Only `apps/web/src/render` imports `three`; only `src/physics` and `src/player` import Rapier.
+- Only `apps/web/src/render` imports `three`; only `src/physics` imports Rapier.
 - No `Math.random()`, `Date.now()` or `new Date()` in generation code; seeds come from global values.
 - No hard-coded `.glb` file names in generator, decision or AI code (assets go through the catalog selector).
 - No tag-specific `if/else` in code: OSM tag rules live only in `packages/world/src/decide/rules/*.json` (hard rule 11). Rules output asset requests and palette names, never asset ids or file names; `rules.test.ts` covers them.

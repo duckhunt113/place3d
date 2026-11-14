@@ -9,6 +9,14 @@ const UP: Vec3 = [0, 1, 0];
 /** Each layer sits this much above the one below, so overlapping areas never flicker. */
 export const LAYER_STEP_M = 0.004;
 
+/**
+ * The height of the ground at a spot, in local metres. Flat for now (MVP). Everything that
+ * stands on the ground asks here, so terrain later changes this one answer.
+ */
+export function groundHeightAt(_x: number, _z: number): number {
+  return 0;
+}
+
 /** Adds the tile's ground: one flat rectangle through its four corners (given in order around it). */
 export function addGround(
   meshes: MeshSet,
