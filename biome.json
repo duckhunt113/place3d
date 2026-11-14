@@ -24,6 +24,6 @@
     }
   },
   "files": {
-    "includes": ["**", "!**/.claude"]
+    "includes": ["**", "!**/.claude", "!**/data/fixtures/tiles"]
   }
 }

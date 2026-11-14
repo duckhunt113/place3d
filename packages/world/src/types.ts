@@ -46,19 +46,46 @@ export type Feature = FeatureOf<Vec2>;
 
 // ---------- Decisions ----------
 
+export type DecisionSource = "osm" | "rule" | "model" | "llm" | "default";
+
+export type RoofShape = "flat" | "gabled" | "hipped" | "pyramidal";
+
 /**
- * One decision per osmId, never stored per tile.
+ * Decisions: one per osmId, never stored per tile.
  * MVP: recomputed from tags and rules on load. Later: a shared table keyed by osmId.
+ * Each records which rules produced it and where the answer came from.
  */
-export type Decision = {
+export type BuildingDecision = {
+  kind: "building";
   osmId: OsmId;
+  /** "house", "retail", "apartments", "shed", ... */
   type: string;
-  storeys?: number;
-  roof?: "flat" | "gabled" | "hipped" | "pyramidal";
+  storeys: number;
+  heightM: number;
+  roof: RoofShape;
+  /** A palette colour name, picked with the building's own seed. */
+  colour: ColorName;
+  shopSigns: boolean;
   /** Degrees clockwise from north, so it means the same in every region. */
   frontBearing?: number;
-  source: "osm" | "rule" | "model" | "llm" | "default";
+  rules: string[];
+  source: DecisionSource;
 };
+
+export type RoadDecision = {
+  kind: "road" | "driveway" | "path";
+  osmId: OsmId;
+  widthM: number;
+  sidewalks: "both" | "left" | "right" | "none";
+  curbs: boolean;
+  markings: "none" | "centre";
+  /** A palette colour name. */
+  surface: ColorName;
+  rules: string[];
+  source: DecisionSource;
+};
+
+export type Decision = BuildingDecision | RoadDecision;
 
 // ---------- Generator output ----------
 

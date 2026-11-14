@@ -6,7 +6,8 @@
 somewhere/
   apps/
     web/                 @somewhere/web: Vite + TypeScript + Three.js + Rapier
-      src/ui/            coordinate input, loading screen, OSM credit
+      src/main.ts        wires ui, worker and render together
+      src/ui/            coordinate input + map-link parser, status panel, OSM credit
       src/worker/        Web Worker running @somewhere/world off the main thread
       src/cache/         tile cache storage (IndexedDB)
       src/render/        the ONLY place that imports three.js
@@ -16,11 +17,14 @@ somewhere/
     server/              (later) Colyseus rooms + server-side fetch, decisions, tile storage
   packages/
     world/               plain TypeScript, NO three.js, NO DOM
-      src/data/          tile sources (saved files, Overpass), tiling, lat/lon -> metres, cache interface
+      src/data/          tiling, lat/lon -> metres, parsing, clipping, cache interface
+        sources/         tile sources (saved files, Overpass)
+        fixtures/        test tile + the saved Albertson Crescent tiles
       src/decide/        rule engine + rules/*.json (tag rules as data); later: trained model, LLM
       src/generator/     roads, ground, buildings -> plain mesh data + placements
       src/assets/        asset catalog types + selector
-      src/util/          seeded random, maths helpers
+      src/util/          seeded random, geometry helpers
+  scripts/               build-palette.mjs, fetch-fixture-tiles.ts
   docs/                  these docs
 ```
 
@@ -81,14 +85,34 @@ type Feature = FeatureOf<Vec2>;
 
 // One decision per osmId. Never stored per tile.
 // MVP: recomputed from tags + rules on load. Later: shared table keyed by osmId.
-type Decision = {
+// Each decision lists the rules that produced it and where the answer came from.
+type DecisionSource = "osm" | "rule" | "model" | "llm" | "default";
+type BuildingDecision = {
+  kind: "building";
   osmId: OsmId;
-  type: string; // "house", "retail", "court_basketball", ...
-  storeys?: number;
-  roof?: "flat" | "gabled" | "hipped" | "pyramidal";
+  type: string; // "house", "retail", "apartments", "shed", ...
+  storeys: number;
+  heightM: number; // the height tag if present, else storeys x 3 m
+  roof: "flat" | "gabled" | "hipped" | "pyramidal";
+  colour: ColorName; // picked from the rule's colour list, seeded by the OSM id
+  shopSigns: boolean;
   frontBearing?: number; // degrees clockwise from north; region-independent
-  source: "osm" | "rule" | "model" | "llm" | "default";
+  rules: string[]; // ids of the rules that matched, in the order applied
+  source: DecisionSource;
 };
+type RoadDecision = {
+  kind: "road" | "driveway" | "path";
+  osmId: OsmId;
+  widthM: number; // the width tag, else lanes x lane width
+  sidewalks: "both" | "left" | "right" | "none";
+  curbs: boolean;
+  markings: "none" | "centre";
+  surface: ColorName;
+  rules: string[];
+  source: DecisionSource;
+};
+type Decision = BuildingDecision | RoadDecision; // areas and objects join in step 2
+// A rule can also answer `kind: "none"`: build nothing (e.g. highway=proposed). Then there is no decision.
 
 type Placement = {
   asset: AssetId; // from the catalog, never a file name
@@ -99,7 +123,7 @@ type Placement = {
 };
 
 type MeshData = {
-  material: string;
+  material: string; // a palette colour name; one mesh per tile and material
   positions: Float32Array;
   normals: Float32Array;
   uvs: Float32Array;
@@ -165,8 +189,13 @@ type RuleSet = {
   rules: Rule[];
 };
 // Engine: index rules by tag key; for a feature, collect rules whose keys it has, keep those whose
-// `when` and `where` match, apply them from least to most specific (higher priority last), so later
-// fields override earlier ones. Same input + same rules version = same decision.
+// `when` and `where` match, and apply them in order: priority (low first), then how specific
+// (exact value 2, "*" 1, each `where` fact 2), then id. Later fields override earlier ones.
+// A copied tag ("@key") replaces a number only if it parses as a number (levels "2" yes, "two" no).
+// Tag values with several entries ("bakery;cafe") match if any entry matches.
+// Same input + same rules version = same decision.
+// Geometry facts (MVP) look only at features in the same tile; a shop node just across a tile
+// edge is not counted. Fix when it matters: compute facts from the tile plus its neighbours.
 
 // Tile source: the ONLY way map data enters the pipeline.
 // Every source returns the same format and includes everything that
@@ -184,17 +213,23 @@ type OsmElement = {
 type TileData = {
   id: TileId;
   version: number; // tile format version; pre-built paths use it (tiles/v1/...)
-  source: string; // "file" | "overpass" | "prebuilt"
+  source: string; // "overpass" | "prebuilt": where the data first came from (a saved file keeps it)
   fetchedAt: string;
-  elements: OsmElement[];
+  elements: OsmElement[]; // only the fields above are kept; the rest of the response is dropped
 };
 interface TileSource {
   getTile(id: TileId): Promise<TileData>;
 }
 // Implementations, by phase:
-//   FileTileSource      saved tiles (MVP step 1, and test fixtures)
-//   OverpassTileSource  live public Overpass (development, any location)
+//   FileTileSource      saved tiles (MVP step 1, and test fixtures). Takes a loader function, so the
+//                       world package touches neither the file system nor the DOM.
+//   OverpassTileSource  live public Overpass (development, any location). Takes `now` and `fetch`
+//                       as options, so tests never use the clock or the network.
+//   FallbackTileSource  tries sources in order; moves on only when a tile is "not found"
+//                       (MVP: saved tiles first, then Overpass)
 //   PrebuiltTileSource  our pre-built tiles from object storage + CDN (launch)
+// One Overpass query text (overpassQuery) serves both the live source and `pnpm fixtures`,
+// so saved and live tiles always hold the same kinds of things.
 
 // What the cache stores: parsed features for one tile, in lat/lon.
 type WorldTile = {
@@ -205,6 +240,16 @@ type WorldTile = {
 };
 // Decisions are looked up by osmId (see Decision). Meshes, placements and
 // colliders are generated each time a tile loads and are never stored.
+
+// The two steps the worker runs for each tile:
+declare function prepareTile(data: TileData, generatedAt: string): WorldTile; // parse + own/clip
+declare function buildTile(tile: WorldTile, region: Region, engine: RuleEngine): TileMeshes;
+type TileMeshes = {
+  id: TileId;
+  key: string; // "17/x/y"
+  meshes: MeshData[];
+  counts: { buildings: number; roads: number; triangles: number };
+};
 
 // Cache interface: defined here, implemented per platform
 // (IndexedDB in apps/web/src/cache, files/database in apps/server later).
@@ -228,3 +273,17 @@ interface TileCache {
 - **Server**: tile lookup, fetching, decisions, profiles (AI) → saves `WorldTile` files plus shared decision/profile tables.
 - **Browser**: generates geometry from `WorldTile`, renders, runs physics, syncs players.
 - Only player movement and changed objects travel over the network, never the world itself.
+
+## Saved tiles (MVP step 1)
+
+- `pnpm fixtures` runs `scripts/fetch-fixture-tiles.ts`: it finds Albertson Crescent on Overpass by name, fetches every zoom-17 tile that a 300 m circle around it touches, and writes one `TileData` JSON per tile to `packages/world/src/data/fixtures/tiles/`, plus a generated `index.ts` (the centre point, the tile keys, and a loader that imports one tile at a time).
+- The web worker reads them through `FileTileSource(loadFixtureTile)` and falls back to `OverpassTileSource` for any other place. Vite splits each tile into its own file, so only the tiles in view are downloaded.
+- The same files are test fixtures (`fixtures/tiles.test.ts`). `fixtures/test-tile.json` is a separate hand-made tile for exact-value tests.
+- Scalable replacement: these files are the smallest version of "pre-built tiles in storage". At launch the loader points at object storage instead of the bundle; nothing else changes.
+
+## Known limits of the first pass (and where they get fixed)
+
+- **Relations:** the Overpass query fetches multipolygon relations for buildings only. Big relations (lakes, forests) can be huge, so they wait for clipped fetching in roadmap item 2.2.
+- **Lines that place things** (`barrier=hedge`, `natural=tree_row`) are fetched but not parsed yet; roadmap item 2.5.
+- **Road joins** are simple overlaps with round ends; clean intersections come with curbs and sidewalks (roadmap step 4).
+- **Geometry facts** see one tile at a time (see the rule engine note above).

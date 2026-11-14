@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createRng } from "./rng";
+import { createRng } from "./rng.ts";
 
 function take(seed: string, count: number): number[] {
   const rng = createRng(seed);

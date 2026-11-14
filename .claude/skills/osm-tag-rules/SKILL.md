@@ -37,16 +37,19 @@ OSM tags say *what* something is. Rules decide *what the game builds for it*. Ru
 - `when`: every key must match. Value = exact string, a list of strings, or `"*"` (tag present, any value).
 - `where` (optional): geometry facts computed in code, with thresholds here. Available facts: `footprintM2`, `insideLanduse`, `shopNodesInside`. Adding a new fact is a code change (with tests) plus a doc update.
 - `then`: decision fields. A string starting with `@` copies that tag's value (`"@building:levels"`, `"@lanes"`, `"@leaf_type"`). If the tag is missing, the field is left out.
-- `priority`: `100` for rules that copy a real OSM tag (tags always win). Leave it out (0) otherwise.
+- `priority`: `100` for rules that copy a real OSM tag (tags always win). Leave it out (0) otherwise. Use a value from 1 to 99 only when a rule must beat another equally specific one, and say why in the rule's `note`.
+- `kind: "none"` in `then` means "build nothing for this" (e.g. `highway=proposed`). Leaving things out is a rule too, never an `if` in code.
 
 ## How rules combine
 
 1. Collect rules whose `when` keys the feature has (the engine indexes by tag key).
 2. Keep those whose `when` and `where` match.
-3. Apply from least to most specific (fewer → more `when` keys), then by `priority`, then by `id`. Later rules override earlier fields.
+3. Apply in order: `priority` (low first), then how specific (an exact value counts 2, `"*"` counts 1, each `where` fact counts 2), then `id`. Later rules override earlier fields.
 4. Each domain has a catch-all (`"*"`) rule so something sensible always comes out.
 
 So: `building=*` catch-all → `building=house` → `building:levels` tag copy (priority 100).
+
+A copied tag replaces a number only if it parses as a number (`building:levels=2` yes, `=two` no, so the rule's own value stays). Facts only see features in the same tile.
 
 ## Adding or changing a rule
 

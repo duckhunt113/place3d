@@ -1,7 +1,7 @@
 {
   "version": 1,
   "domain": "roads",
-  "note": "OSM tag rules for roads and paths. Width = widthM tag, else lanes x laneWidthM.",
+  "note": "OSM tag rules for roads and paths. Width = widthM tag, else lanes x laneWidthM. kind \"none\" = not drawn.",
   "rules": [
     {
       "id": "road.any",
@@ -98,13 +98,33 @@
     {
       "id": "path.footway",
       "when": {
-        "highway": ["footway", "path", "pedestrian", "cycleway"]
+        "highway": ["footway", "path", "pedestrian", "cycleway", "steps"]
       },
       "then": {
         "kind": "path",
         "widthM": 1.8,
         "curbs": false,
         "surface": "sidewalk"
+      }
+    },
+    {
+      "id": "road.none",
+      "when": {
+        "highway": [
+          "proposed",
+          "construction",
+          "razed",
+          "abandoned",
+          "platform",
+          "corridor",
+          "elevator",
+          "bus_stop",
+          "rest_area",
+          "services"
+        ]
+      },
+      "then": {
+        "kind": "none"
       }
     },
     {

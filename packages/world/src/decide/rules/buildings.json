@@ -113,6 +113,7 @@
           "gte": 1
         }
       },
+      "priority": 10,
       "then": {
         "type": "retail",
         "storeys": 1,

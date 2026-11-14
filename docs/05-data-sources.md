@@ -51,11 +51,21 @@ Tags we care about most:
 - Identify the app. Browsers can't set `User-Agent`, so the game relies on the `Referer` the browser sends; scripts and the server set a `User-Agent` naming the app.
 - The public servers are volunteer-run and sometimes slow or down. Fine for development; at launch, switch to pre-built tiles.
 
+### What one tile query asks for
+
+One query per zoom-17 tile, built by `overpassQuery` in `packages/world/src/data/sources/overpass.ts` (the only place the query text lives; `pnpm fixtures` uses the same function). It uses the tile's box and `out geom`, so everything that touches the tile comes back with its full shape:
+
+- ways: `highway`, `building`, `landuse`, `leisure`, `amenity=parking`, `barrier=hedge`, and `natural` = water, wood, scrub, sand, beach or tree_row
+- relations: `building` multipolygons only (big water and forest relations wait for clipped fetching, roadmap item 2.2)
+- nodes: trees and shrubs, `shop`, `amenity`, fire hydrants, stop signs
+
+Only the fields the game uses are kept (`type`, `id`, `tags`, position or geometry, members). Adding a kind of thing to the world means adding a line to this query, a rule, and bumping the tile format version so saved tiles are fetched again.
+
 ### Plan by phase
 
 The game always asks the `TileSource` for "tile X"; only the supplier behind it changes.
 
-1. **MVP step 1:** saved Albertson Crescent tiles. No network needed; the same files are the test fixtures.
+1. **MVP step 1:** saved Albertson Crescent tiles, fetched once with `pnpm fixtures` and kept in `packages/world/src/data/fixtures/tiles/`. No network needed to play or test; the same files are the test fixtures.
 2. **Development:** live public Overpass for any other location, one query per zoom-17 tile.
 3. **Beta (first real players):** a small server fetches each **missing** tile from public Overpass once, stores it in object storage, and serves the stored copy to everyone after that. Thousands of players on one street cause one Overpass request.
 4. **Launch (whole world):**

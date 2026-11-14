@@ -1,0 +1,143 @@
+import { describe, expect, it } from "vitest";
+import type { GeoFeature, LatLon, TileData, TileId } from "../types.ts";
+import { clipLine, featuresForTile, footprintCentre } from "./clip.ts";
+import testTile from "./fixtures/test-tile.json" with { type: "json" };
+import { parseElements } from "./parse.ts";
+import { prepareTile, WORLD_TILE_VERSION } from "./prepare.ts";
+import { tileBounds } from "./tiles.ts";
+
+const data = testTile as unknown as TileData;
+const TILE: TileId = data.id;
+const EAST: TileId = { ...TILE, x: TILE.x + 1 };
+const WEST: TileId = { ...TILE, x: TILE.x - 1 };
+const box = tileBounds(TILE);
+const all = parseElements(data.elements);
+const here = featuresForTile(all, TILE);
+const ids = (features: GeoFeature[], kind: GeoFeature["kind"]) =>
+  features.filter((f) => f.kind === kind).map((f) => f.osmId);
+const inBox = (p: LatLon) =>
+  p.lon >= box.west && p.lon <= box.east && p.lat >= box.south && p.lat <= box.north;
+
+describe("building ownership", () => {
+  it("gives each building to exactly one tile: the one holding its centre", () => {
+    // way/2005's centre is east of the tile; way/2006 pokes out west but its centre is inside.
+    expect(ids(here, "building")).toEqual([
+      "way/2001",
+      "way/2002",
+      "way/2003",
+      "way/2004",
+      "way/2006",
+      "relation/5001",
+    ]);
+    expect(ids(featuresForTile(all, EAST), "building")).toEqual(["way/2005"]);
+    expect(ids(featuresForTile(all, WEST), "building")).toEqual([]);
+  });
+
+  it("keeps an owned building whole, even the part outside the tile", () => {
+    const house = here.find((f) => f.osmId === "way/2006");
+    expect(house?.kind === "building" && house.footprint.some((p) => p.lon < box.west)).toBe(true);
+  });
+
+  it("finds the centre of a footprint", () => {
+    const house = all.find((f) => f.osmId === "way/2001");
+    if (house?.kind !== "building") throw new Error("fixture changed");
+    const centre = footprintCentre(house.footprint);
+    // The house spans 45-57 m east and 140-150 m north of the tile's south-west corner.
+    expect((centre.lon - box.west) * 80833).toBeCloseTo(51, 1);
+    expect((centre.lat - box.south) * 111103).toBeCloseTo(145, 1);
+  });
+});
+
+describe("points", () => {
+  it("belong to the tile they are in", () => {
+    expect(ids(here, "point")).not.toContain("node/7");
+    expect(ids(featuresForTile(all, EAST), "point")).toEqual(["node/7"]);
+  });
+});
+
+describe("roads", () => {
+  it("are cut at the tile's edges", () => {
+    const street = here.filter((f) => f.osmId === "way/1001");
+    expect(street).toHaveLength(1);
+    const line = street[0]?.kind === "road" ? street[0].line : [];
+    expect(line.every(inBox)).toBe(true);
+    expect(line[0]?.lon).toBe(box.west);
+    expect(line[line.length - 1]?.lon).toBe(box.east);
+    expect(line).toHaveLength(3);
+  });
+
+  it("meet at exactly the same point in the neighbouring tile", () => {
+    const end = (features: GeoFeature[], which: "first" | "last") => {
+      const road = features.find((f) => f.osmId === "way/1001");
+      const line = road?.kind === "road" ? road.line : [];
+      return which === "first" ? line[0] : line[line.length - 1];
+    };
+    expect(end(featuresForTile(all, EAST), "first")).toEqual(end(here, "last"));
+    expect(end(featuresForTile(all, WEST), "last")).toEqual(end(here, "first"));
+  });
+
+  it("stay untouched when they are fully inside", () => {
+    const driveway = here.find((f) => f.osmId === "way/1002");
+    const original = all.find((f) => f.osmId === "way/1002");
+    expect(driveway).toEqual(original);
+  });
+});
+
+describe("clipLine", () => {
+  const p = (x: number, y: number): LatLon => ({
+    lon: box.west + (box.east - box.west) * x,
+    lat: box.south + (box.north - box.south) * y,
+  });
+
+  it("gives several pieces when a line leaves and comes back", () => {
+    const pieces = clipLine([p(0.2, 0.5), p(1.5, 0.5), p(1.5, 0.8), p(0.2, 0.8)], box);
+    expect(pieces).toHaveLength(2);
+    expect(pieces[0]?.[1]?.lon).toBe(box.east);
+    expect(pieces[1]?.[0]?.lon).toBe(box.east);
+  });
+
+  it("gives nothing for a line that never enters the box", () => {
+    expect(clipLine([p(1.2, 0.1), p(1.8, 0.9)], box)).toEqual([]);
+    expect(clipLine([p(-0.5, 1.5), p(1.5, 1.5)], box)).toEqual([]);
+  });
+
+  it("cuts a line that crosses the whole box in one segment", () => {
+    const [piece] = clipLine([p(-1, 0.5), p(2, 0.5)], box);
+    expect(piece?.map((q) => q.lon)).toEqual([box.west, box.east]);
+  });
+});
+
+describe("areas", () => {
+  it("are cut to the tile", () => {
+    const land = here.filter((f) => f.osmId === "way/3001");
+    expect(land).toHaveLength(1);
+    const outline = land[0]?.kind === "area" ? land[0].outline : [];
+    expect(outline.length).toBeGreaterThanOrEqual(4);
+    expect(outline.every(inBox)).toBe(true);
+  });
+
+  it("show up in every tile they cover", () => {
+    expect(ids(featuresForTile(all, EAST), "area")).toContain("way/3001");
+    expect(ids(featuresForTile(all, WEST), "area")).toContain("way/3001");
+  });
+
+  it("stay untouched when they are fully inside", () => {
+    expect(here.find((f) => f.osmId === "way/3002")).toEqual(
+      all.find((f) => f.osmId === "way/3002"),
+    );
+  });
+});
+
+describe("prepareTile", () => {
+  it("parses, keeps what belongs to the tile, and stamps the version and the given time", () => {
+    const tile = prepareTile(data, "2026-11-13T12:00:00.000Z");
+    expect(tile.id).toEqual(TILE);
+    expect(tile.version).toBe(WORLD_TILE_VERSION);
+    expect(tile.generatedAt).toBe("2026-11-13T12:00:00.000Z");
+    expect(tile.features).toEqual(here);
+  });
+
+  it("gives the same tile every time", () => {
+    expect(prepareTile(data, "t")).toEqual(prepareTile(data, "t"));
+  });
+});

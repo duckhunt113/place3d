@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { LatLon } from "../types";
-import { mercator, project, REGION_ZOOM, regionFor, regionFromTile, unproject } from "./project";
+import type { LatLon } from "../types.ts";
+import { mercator, project, REGION_ZOOM, regionFor, regionFromTile, unproject } from "./project.ts";
 
 // A point in Lorne Park, Mississauga (the MVP test neighbourhood).
 const LORNE_PARK: LatLon = { lat: 43.533, lon: -79.62 };

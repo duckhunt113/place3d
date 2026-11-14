@@ -2,7 +2,7 @@
 
 The build plan for the MVP (v0.1), in the order to build it. What the MVP includes is in [02-mvp.md](02-mvp.md); what comes after it is in [12-roadmap.md](12-roadmap.md).
 
-**Next up:** 1.4 Tile grid.
+**Next up:** the step 1 "done when" check (run `pnpm fixtures`, then compare the app with openstreetmap.org), then 2.1 Colours by name.
 
 How to use this file:
 
@@ -13,15 +13,15 @@ How to use this file:
 
 ## Overview
 
-| Step | Result                                               | Status      |
-| ---- | ---------------------------------------------------- | ----------- |
-| 0    | Foundations: workspace, rules, art, models           | Done        |
-| 1    | Coordinates in → grey roads and building boxes       | In progress |
-| 2    | Style pass: colours, ground, trees, sky, shadows     | Not started |
-| 3    | Walking: first-person controls and collisions        | Not started |
-| 4    | Details: sidewalks, curbs, parking lines, shop signs | Not started |
-| 5    | Saved tile cache: revisited areas load instantly     | Not started |
-| 6    | Finish line: checks and the "done when" walk         | Not started |
+| Step | Result                                               | Status                     |
+| ---- | ---------------------------------------------------- | -------------------------- |
+| 0    | Foundations: workspace, rules, art, models           | Done                       |
+| 1    | Coordinates in → grey roads and building boxes       | Built; final check pending |
+| 2    | Style pass: colours, ground, trees, sky, shadows     | Not started                |
+| 3    | Walking: first-person controls and collisions        | Not started                |
+| 4    | Details: sidewalks, curbs, parking lines, shop signs | Not started                |
+| 5    | Saved tile cache: revisited areas load instantly     | Not started                |
+| 6    | Finish line: checks and the "done when" walk         | Not started                |
 
 ## Step 0 — Foundations (done)
 
@@ -42,20 +42,20 @@ Goal: enter coordinates and see plain grey roads and building boxes in the right
 - [x] 1.1 Shared types: `types.ts` with the contracts from [03-architecture.md](03-architecture.md) (`LatLon`, `Vec2`, `TileId`, `OsmId`, `GeoFeature`/`Feature`, `Decision`, `MeshData`, `Placement`, `TileData`, `TileSource`, `WorldTile`, `TileCache`, catalog, palette and rule types)
 - [x] 1.2 Seeded RNG: `util/rng.ts`. Same seed string (e.g. `way/123`) → same numbers, on every machine
 - [x] 1.3 Projection: `data/project.ts`. Region = zoom-10 tile of the entered point; lat/lon → local metres with the formula in `CLAUDE.md` hard rule 3. Tests: north is −z, east is +x, a known distance comes out in true metres
-- [ ] 1.4 Tile grid: `data/tiles.ts`. Lat/lon → zoom-17 tile id, a tile's bounding box, and the tiles a 300 m circle touches
-- [ ] 1.5 Saved tiles: `scripts/fetch-fixture-tiles.mjs` fetches the Albertson Crescent tiles from Overpass once (with a `User-Agent`) and writes them to `data/fixtures/`, one `TileData` JSON per tile
-- [ ] 1.6 Tile sources: `data/sources/file.ts` (`FileTileSource`, reads the saved tiles through a loader function, so the world package touches neither the file system nor the DOM) and `data/sources/overpass.ts` (`OverpassTileSource`: one `out geom` query per tile box, everything that touches the tile). Tests use saved responses only, never the network
-- [ ] 1.7 Parsing: `data/parse.ts`. `OsmElement` → `GeoFeature` (buildings, roads, areas, points) with type-qualified ids; drop duplicates and broken shapes
-- [ ] 1.8 Tile ownership and clipping: `data/clip.ts`. Each building belongs to the tile holding its centroid; roads and areas are clipped at tile edges, and the two halves line up
-- [ ] 1.9 Rule engine: `decide/engine.ts` and `decide/facts.ts`. Applies `rules/*.json` (indexed by tag key; precedence as in hard rule 12) and computes the geometry facts (`footprintM2`, `insideLanduse`, `shopNodesInside`). First use: building and road decisions
-- [ ] 1.10 Generator, first pass: `generator/roads.ts` (flat ribbons along each road, width from its decision, simple overlapping joins), `generator/buildings.ts` (walls raised from the footprint, flat roof via `earcut`), `generator/ground.ts` (flat ground per tile), `generator/merge.ts` (one mesh per tile and material). Test: same input twice → identical output
-- [ ] 1.11 Public API: `index.ts` exports one entry point that takes tile data and returns meshes for a tile
+- [x] 1.4 Tile grid: `data/tiles.ts`. Lat/lon → zoom-17 tile id, a tile's bounding box, and the tiles a 300 m circle touches
+- [ ] 1.5 Saved tiles: `scripts/fetch-fixture-tiles.ts` (`pnpm fixtures`) fetches the Albertson Crescent tiles from Overpass once (with a `User-Agent`) and writes them to `data/fixtures/tiles/`, one `TileData` JSON per tile, plus a generated `index.ts` that loads them. The script is written and tested against a stand-in server; tick this when `pnpm fixtures` has been run and the tiles are committed
+- [x] 1.6 Tile sources: `data/sources/file.ts` (`FileTileSource`, reads the saved tiles through a loader function, so the world package touches neither the file system nor the DOM; `FallbackTileSource` tries saved tiles first, then Overpass) and `data/sources/overpass.ts` (`OverpassTileSource`: one `out geom` query per tile box, everything that touches the tile). Tests use saved responses only, never the network
+- [x] 1.7 Parsing: `data/parse.ts`. `OsmElement` → `GeoFeature` (buildings, roads, areas, points) with type-qualified ids; drop duplicates and broken shapes
+- [x] 1.8 Tile ownership and clipping: `data/clip.ts`. Each building belongs to the tile holding its centroid; roads and areas are clipped at tile edges, and the two halves line up
+- [x] 1.9 Rule engine: `decide/engine.ts` and `decide/facts.ts`. Applies `rules/*.json` (indexed by tag key; precedence as in hard rule 12) and computes the geometry facts (`footprintM2`, `insideLanduse`, `shopNodesInside`). First use: building and road decisions (`decide/decisions.ts`)
+- [x] 1.10 Generator, first pass: `generator/roads.ts` (flat ribbons along each road, width from its decision, simple overlapping joins with round ends), `generator/buildings.ts` (walls raised from the footprint, flat roof via `earcut`), `generator/ground.ts` (flat ground per tile), `generator/mesh.ts` (one mesh per tile and material). Test: same input twice → identical output
+- [x] 1.11 Public API: `index.ts` exports `prepareTile` (tile data → parsed, clipped features) and `buildTile` (features → meshes for a tile), plus the tile sources and tile grid
 
 **Web app (`apps/web/src`)**
 
-- [ ] 1.12 Location input: `ui/` with a latitude/longitude box and a Google Maps link parser (coordinates only). The parser gets the first web test, so add Vitest to the web app in the same change
-- [ ] 1.13 Worker: `worker/world.worker.ts` runs the world package off the main thread, called through `comlink`
-- [ ] 1.14 Renderer, first pass: `render/scene.ts` and `render/meshes.ts` turn `MeshData` into Three.js meshes; a simple fly-around debug camera; an FPS counter; the OSM credit on screen
+- [x] 1.12 Location input: `ui/` with a latitude/longitude box and a map-link parser (Google Maps and OpenStreetMap links; coordinates are read from the link's text only, nothing is fetched). The parser has the first web test, so Vitest is added to the web app
+- [x] 1.13 Worker: `worker/world.worker.ts` runs the world package off the main thread, called through `comlink`
+- [x] 1.14 Renderer, first pass: `render/view.ts` and `render/meshes.ts` turn `MeshData` into Three.js meshes; a simple fly-around debug camera (north up); an FPS counter; the OSM credit on screen
 
 **Done when:** you enter Albertson Crescent's coordinates and see grey roads and building boxes that match the street layout on openstreetmap.org, with north the right way round.
 
@@ -63,11 +63,11 @@ Goal: enter coordinates and see plain grey roads and building boxes in the right
 
 Goal: the area looks like the `art-style` references.
 
-- [ ] 2.1 Colours by name: the generator tags surfaces with palette names; the renderer resolves them from `palette.json`
-- [ ] 2.2 Ground areas: `generator/ground.ts` fills lawns, parks, water, sand and parking surfaces to their real outlines, using `rules/areas.json`
+- [ ] 2.1 Colours by name: the generator tags surfaces with palette names; the renderer resolves them from `palette.json`. (Step 1 already works this way with greys: each mesh's material is a palette name. What's left is using the real colours from the rules)
+- [ ] 2.2 Ground areas: `generator/ground.ts` fills lawns, parks, water, sand and parking surfaces to their real outlines, using `rules/areas.json`. Includes fetching water and wood relations (multipolygons) clipped to the tile; step 1 fetches relations for buildings only
 - [ ] 2.3 Building look: colour from the rule's colour list (seeded pick by OSM id), flat roofs with a darker cap; a simple gabled roof on small houses only if it's easy
 - [ ] 2.4 Asset selector: `assets/select.ts`. Indexes the catalog by category, matches the request's `want`, picks with the seeded RNG, skips `deprecated`, falls back to the category default
-- [ ] 2.5 Placements: `generator/placements.ts`. Mapped trees, tree rows, hedges and props from `rules/objects.json`; seeded scatter in parks and lawns (seeded by global position); nothing lands on a road or inside a building
+- [ ] 2.5 Placements: `generator/placements.ts`. Mapped trees, tree rows, hedges and props from `rules/objects.json` (hedge and tree-row lines are fetched already but need a `line` feature in `data/parse.ts`); seeded scatter in parks and lawns (seeded by global position); nothing lands on a road or inside a building
 - [ ] 2.6 Model rendering: `render/assets.ts` loads only the `.glb` files a tile uses and swaps each `pal:` material for its palette colour; `render/instances.ts` draws repeats as instanced meshes
 - [ ] 2.7 Sky and light: `render/sky.ts` and `render/lighting.ts` with the starting values in the `art-style` skill (warm sun, one shadow-casting light, soft shadows, light fog)
 - [ ] 2.8 Compare screenshots with the reference images and tune; update the numbers in the skill if they change
@@ -89,7 +89,7 @@ Goal: explore the area on foot, in first person.
 
 Goal: the details that make the place recognisable up close.
 
-- [ ] 4.1 Curbs and sidewalks: `generator/sidewalks.ts`. 15 cm curbs and sidewalk strips with panel joints, where the road rules say so
+- [ ] 4.1 Curbs and sidewalks: `generator/sidewalks.ts`. 15 cm curbs and sidewalk strips with panel joints, where the road rules say so. Replace step 1's overlapping road joins with clean intersections here
 - [ ] 4.2 Road markings: centre lines on main roads, slightly above the road surface
 - [ ] 4.3 Parking: `generator/parking.ts` paints stall lines inside parking areas
 - [ ] 4.4 Shop signs: one sign board per shop found inside a retail building, on the wall facing the road or parking; `render/signs.ts` draws the shop's name on the `sign:face` material in our own font (names only, no logos)

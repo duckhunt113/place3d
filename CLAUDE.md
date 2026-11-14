@@ -2,7 +2,7 @@
 
 Somewhere is a web app. You enter coordinates and a radius, and the real area inside that radius is rebuilt from OpenStreetMap as a bright, kid-friendly, stylized 3D world (faceted low-poly trees, smooth simplified buildings and streets; see the `art-style` skill). You then explore it in first person in the browser. Multiplayer and AI features come after the MVP.
 
-**Status:** MVP in progress. The workspace is set up (pnpm, Vite + TypeScript web app, engine-free `@somewhere/world` package); world code starts with MVP step 1 (build plan: `docs/14-mvp-roadmap.md`). Full project details live in `docs/` (start at `docs/README.md`).
+**Status:** MVP in progress. Step 1 is built: coordinates in → grey roads and building boxes, from saved tiles or live Overpass (build plan: `docs/14-mvp-roadmap.md`). Full project details live in `docs/` (start at `docs/README.md`).
 
 ## Current scope: MVP only
 
@@ -33,21 +33,24 @@ The MVP is done when you can recognise Albertson Crescent and the nearby Lorne P
 
 ```
 apps/web/            @somewhere/web: Vite + TypeScript + three + @dimforge/rapier3d-compat
-  src/ui/            coordinate input, loading screen, OSM credit (plain DOM)
-  src/worker/        Web Worker that runs @somewhere/world off the main thread
+  src/main.ts        wires ui, worker and render together; never imports three itself
+  src/ui/            coordinate input + map-link parser, status panel, OSM credit (plain DOM)
+  src/worker/        Web Worker that runs @somewhere/world off the main thread (through comlink)
   src/cache/         tile cache storage (IndexedDB), implements the world package's cache interface
   src/render/        the ONLY place allowed to import three
   src/physics/       Rapier world + colliders built from generator data
   src/player/        first-person controls, camera, player capsule
   public/assets/     .glb asset kit + catalog.json (asset catalog) + palette.json (colours)
 packages/world/      @somewhere/world: plain TypeScript, engine-free
-  src/data/          tile sources (saved files, Overpass), tiling, lat/lon -> metres, cache interface (no storage code)
-  src/decide/        rule engine; rules/*.json = OSM tag rules as data (buildings, roads, areas, objects)
+  src/data/          tiling, lat/lon -> metres, parsing, clipping, cache interface (no storage code)
+    sources/         tile sources: saved files, Overpass
+    fixtures/        test-tile.json (small hand-made test tile); tiles/ = the saved Albertson Crescent tiles (generated)
+  src/decide/        rule engine, geometry facts; rules/*.json = OSM tag rules as data (buildings, roads, areas, objects)
   src/generator/     roads, ground, buildings -> plain mesh data + placements + colliders
   src/assets/        asset catalog types + selector (requirements -> asset ID)
-  src/util/          seeded RNG, maths
+  src/util/          seeded RNG, geometry maths
 apps/server/         (later) Colyseus rooms + server-side fetch, decisions and tile storage
-scripts/             project scripts (build-palette.mjs)
+scripts/             project scripts (build-palette.mjs, fetch-fixture-tiles.ts)
 docs/                design docs: read the relevant one before big changes
 ```
 
@@ -62,6 +65,7 @@ pnpm lint                                  # Biome: lint + format check (no chan
 pnpm fix                                   # Biome: auto-fix lint issues and format files
 pnpm palette                               # regenerate palette.png + docs/palette-preview.html from palette.json
 pnpm palette:check                         # validate palette.json and check palette.png is up to date (writes nothing)
+pnpm fixtures                              # fetch the saved Albertson Crescent tiles from Overpass (needs internet; run rarely)
 pnpm build
 pnpm --filter @somewhere/web add <lib>
 pnpm --filter @somewhere/world add <lib>
@@ -123,7 +127,8 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
 12. **Data, not code: rules ask, the catalog answers.** Built to scale to thousands of rules and 10,000+ assets without code changes.
     - **OSM tag rules are data** in `packages/world/src/decide/rules/*.json` (one file per domain). A small generic engine applies them. Never write tag-specific `if/else` in code; add or change a rule instead. The `osm-tag-rules` skill explains the format.
     - **Rules output requests, never assets:** a rule says _what kind of thing_ (e.g. `{ category: "tree", want: { leafType: "needleleaved" } }`); the catalog selector picks _which model_. Rules grow with the kinds of things OSM describes (hundreds); the catalog grows with variety (thousands). Adding models never needs new rules.
-    - **Precedence:** a real OSM tag copied with `"@key"` (priority 100) > the most specific matching rule (most `when` keys) > less specific rules > the domain's catch-all (`"*"`). Ties: higher `priority`, then rule `id`.
+    - **Precedence:** a real OSM tag copied with `"@key"` (priority 100) > the most specific matching rule > less specific rules > the domain's catch-all (`"*"`). The engine orders matching rules by `priority` (default 0), then by how specific they are (an exact value counts 2, `"*"` counts 1, each `where` fact counts 2), then by rule `id`; later rules override earlier fields. Use a priority between 1 and 99 only when a rule must beat another equally specific one, and say why in the rule's `note`.
+    - **Not drawn:** a rule whose `then` sets `kind: "none"` means "build nothing for this" (e.g. proposed roads). Leaving things out is also data, never an `if` in code.
     - **Geometry-based rules** use named facts computed in code (`footprintM2`, `insideLanduse`, `shopNodesInside`, …) with thresholds kept in the rule's `where`, never in code.
     - **Indexed, never scanned:** the engine indexes rules by tag key; the selector indexes the catalog by category (then attributes).
     - **Versioned and pinned:** rules, catalog and palette each have a `version`; a world or room uses one version of each for everyone.
@@ -131,14 +136,15 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
 
 ## Testing (Vitest)
 
-- **Where:** put tests next to the code they test, named `<file>.test.ts` (e.g. `src/util/rng.ts` → `src/util/rng.test.ts`). No separate `test/` folders.
+- **Where:** put tests next to the code they test, named `<file>.test.ts` (e.g. `src/util/rng.ts` → `src/util/rng.test.ts`). No separate `test/` folders. A few small modules in one folder may share one test file named after the folder (`data/sources/sources.test.ts`, `generator/generator.test.ts`).
 - **What must have tests:** every module in `packages/world` (projection, tiling, clipping, decisions, generators, seeded RNG). Rendering, player controls and visuals in `apps/web` are checked by eye; test only plain logic there (e.g. parsing a Google Maps link).
 - **Determinism:** generators get a test that runs the same input twice and expects identical output (`toEqual`). Never use `Math.random()`, `Date.now()` or the real clock in code under test; pass seeds and timestamps in.
-- **No network:** tests never call Overpass or any other service. Use saved tiles in a `fixtures/` folder next to the code (e.g. `src/data/fixtures/`), in the same format the saved-file tile source reads, and keep them small (one tile per file).
+- **No network:** tests never call Overpass or any other service; code that fetches takes its `fetch` function as an option, and tests pass a fake one. Use saved tiles in a `fixtures/` folder next to the code (e.g. `src/data/fixtures/`), in the same format the saved-file tile source reads, and keep them small (one tile per file).
+- **Two kinds of fixtures:** `src/data/fixtures/test-tile.json` is a small hand-made tile for exact-value tests; change it only together with the tests that use it. `src/data/fixtures/tiles/` holds the real saved tiles and its `index.ts`, all written by `pnpm fixtures`: never edit them by hand (Biome skips the folder), and tests on them check general things only (they load, cover the area, build the same way twice), because real map data changes when it's re-fetched.
 - **Bugs:** every bug fix adds a test that fails without the fix.
 - **Assertions:** check real values with tolerances where maths is involved (`toBeCloseTo`), not just "is defined" or "doesn't throw".
 - **Speed:** the whole suite should run in a few seconds; no sleeps or timers.
-- **Web tests:** `apps/web` has no test setup yet. When the first web test is written, add Vitest (`pnpm --filter @somewhere/web add -D vitest`) and a `"test": "vitest run"` script in the same change.
+- **Web tests:** `apps/web` uses Vitest too, for plain logic only (first one: `src/ui/location.test.ts`). Keep that logic in files that don't import three or touch the DOM, so the tests need no browser.
 - **Done means green:** before calling any change finished, run `pnpm lint && pnpm typecheck && pnpm test` and fix any failure. Never delete, skip (`.skip`) or weaken a failing test to make it pass unless the behaviour was intentionally changed, and say so when you do.
 
 ## Working style
@@ -151,6 +157,10 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
   - `comlink` (web): call the world Web Worker like normal async functions
   - `idb-keyval` (web): IndexedDB storage behind the tile cache
 - **New dependencies:** must suit their package (in `packages/world`: no DOM, three.js or Rapier) and pass hard rule 11; add them to `docs/10-tech-stack.md` in the same change.
+- **Imports in `packages/world`:** relative imports end in `.ts`, JSON imports use `with { type: "json" }`, and only erasable TypeScript syntax is allowed (no `enum`, `namespace` or constructor parameter properties; `erasableSyntaxOnly` enforces it). This lets plain Node run the world code without a build step (scripts now, the server later).
+- **Scripts** live in `scripts/` as ES modules (the root `package.json` has `"type": "module"`). Scripts that use world code are TypeScript, run with `node --experimental-strip-types`, and import the world package's own functions rather than copying them (the fixture fetch uses the game's own Overpass query).
+- **Generated files** are never edited by hand; change their source and re-run the command: `palette.png` and `docs/palette-preview.html` (`pnpm palette`), `packages/world/src/data/fixtures/tiles/` (`pnpm fixtures`).
+- **Three.js stays in `apps/web/src/render`:** `main.ts`, `ui/` and `worker/` talk to the renderer through the small interface `createWorldView` returns.
 - **Biome** is the only linter and formatter (config in `biome.json`: 2 spaces, double quotes, semicolons, 100-char lines). Don't add ESLint or Prettier. Run `pnpm fix` before committing; don't silence a lint rule without a short comment saying why (`// biome-ignore lint/<rule>: <reason>`).
 - **Build plan:** `docs/14-mvp-roadmap.md` lists the MVP work in order. Unless asked otherwise, work on its "Next up" item; when an item is done and green, tick it and update "Next up" in the same change.
 - **New conventions go in the rules.** When we adopt a new convention (naming, folder layout, tooling, workflow), add it to this file in the same change, and update the matching doc in `docs/`.

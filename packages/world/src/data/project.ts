@@ -6,7 +6,7 @@
 //
 // Anything stored or shared keeps lat/lon. Project only when generating.
 
-import type { LatLon, Region, Vec2 } from "../types";
+import type { LatLon, Region, Vec2 } from "../types.ts";
 
 export const REGION_ZOOM = 10;
 

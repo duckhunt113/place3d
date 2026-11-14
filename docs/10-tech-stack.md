@@ -2,28 +2,28 @@
 
 ## Language and tools
 
-| Thing             | What it does                                                                                                              | When |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------- | ---- |
-| **TypeScript**    | All code. JavaScript plus types; catches mistakes early                                                                   | MVP  |
-| **Node.js** (LTS) | Runs the tooling now; the game server later                                                                               | MVP  |
-| **pnpm**          | Package manager plus workspace (links `apps/*` and `packages/*`). Don't mix it with npm or yarn                           | MVP  |
-| **Vite**          | Dev server with instant reload; production build                                                                          | MVP  |
-| **Git + GitHub**  | Version history and backup                                                                                                | MVP  |
-| **VS Code**       | Editor with the best TypeScript support                                                                                   | MVP  |
-| **Biome**         | Linter + formatter in one (`pnpm lint`, `pnpm fix`); config in `biome.json`                                               | MVP  |
-| **Vitest**        | Tests, especially "same input gives the same world". Test files sit next to the code as `*.test.ts`; rules in `CLAUDE.md` | MVP  |
+| Thing                            | What it does                                                                                                                                                                                | When |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| **TypeScript**                   | All code. JavaScript plus types; catches mistakes early                                                                                                                                     | MVP  |
+| **Node.js** (LTS, 22.6 or newer) | Runs the tooling now; the game server later. Runs the TypeScript scripts in `scripts/` directly (type stripping), so `packages/world` uses `.ts` import extensions and erasable syntax only | MVP  |
+| **pnpm**                         | Package manager plus workspace (links `apps/*` and `packages/*`). Don't mix it with npm or yarn                                                                                             | MVP  |
+| **Vite**                         | Dev server with instant reload; production build                                                                                                                                            | MVP  |
+| **Git + GitHub**                 | Version history and backup                                                                                                                                                                  | MVP  |
+| **VS Code**                      | Editor with the best TypeScript support                                                                                                                                                     | MVP  |
+| **Biome**                        | Linter + formatter in one (`pnpm lint`, `pnpm fix`); config in `biome.json`                                                                                                                 | MVP  |
+| **Vitest**                       | Tests in both packages, especially "same input gives the same world". Test files sit next to the code as `*.test.ts`; rules in `CLAUDE.md`                                                  | MVP  |
 
 ## Libraries
 
-| Library                       | Where                                                           | When  |
-| ----------------------------- | --------------------------------------------------------------- | ----- |
-| **three** (+ `@types/three`)  | `apps/web` only                                                 | MVP   |
-| **@dimforge/rapier3d-compat** | `apps/web` (and the server later)                               | MVP   |
-| **Colyseus**                  | Multiplayer rooms and sync                                      | Later |
-| **earcut**                    | `packages/world`: triangulate outlines (buildings, lawns, lots) | MVP   |
-| **polygon-clipping**          | `packages/world`: clip shapes at tile edges, overlap checks     | MVP   |
-| **comlink**                   | `apps/web`: call the world Web Worker like normal functions     | MVP   |
-| **idb-keyval**                | `apps/web`: IndexedDB storage for the tile cache                | MVP   |
+| Library                       | Where                                                                                          | When  |
+| ----------------------------- | ---------------------------------------------------------------------------------------------- | ----- |
+| **three** (+ `@types/three`)  | `apps/web/src/render` only (includes its `MapControls` and `Stats` add-ons for the debug view) | MVP   |
+| **@dimforge/rapier3d-compat** | `apps/web` (and the server later)                                                              | MVP   |
+| **Colyseus**                  | Multiplayer rooms and sync                                                                     | Later |
+| **earcut**                    | `packages/world`: triangulate outlines (buildings, lawns, lots)                                | MVP   |
+| **polygon-clipping**          | `packages/world`: clip shapes at tile edges, overlap checks                                    | MVP   |
+| **comlink**                   | `apps/web`: call the world Web Worker like normal functions                                    | MVP   |
+| **idb-keyval**                | `apps/web`: IndexedDB storage for the tile cache                                               | MVP   |
 
 ## Data
 

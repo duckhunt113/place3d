@@ -5,7 +5,7 @@ You type coordinates, and everything inside a radius around them is rebuilt in 3
 data: roads, buildings with real shop names, parks, trees. You explore it in first person in your web
 browser. Exploring with friends comes after the MVP.
 
-Status: **MVP in progress.** The workspace is set up; world code starts with step 1 of [14-mvp-roadmap.md](14-mvp-roadmap.md).
+Status: **MVP in progress.** Step 1 (grey roads and building boxes) is built; next is step 2 of [14-mvp-roadmap.md](14-mvp-roadmap.md).
 
 ## Contents
 
