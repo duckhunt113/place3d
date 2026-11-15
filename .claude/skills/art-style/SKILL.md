@@ -38,7 +38,7 @@ Do **not** facet buildings or roads, and do **not** make trees smooth.
 ## Ground and streets
 
 - **Asphalt:** dark warm grey, very subtle noise or colour variation so it doesn't look flat up close. No cracks or potholes in the MVP.
-- **Markings:** crisp clean white (lane edges, parking stalls, crosswalk zebras, painted STOP), warm yellow centre lines. Slightly raised above the road to avoid z-fighting.
+- **Markings:** crisp clean white (lane edges, parking stalls, crosswalk zebras, painted STOP), warm yellow centre lines. Slightly raised above the road to avoid z-fighting. Painted lines are wider than real paint so they read from a distance: centre lines 0.2 m, stall lines 0.14 m, sidewalk joints 0.06 m.
 - **Curbs:** about 0.15 m high, light grey, rounded top edge. Always present where a road meets lawn or sidewalk.
 - **Sidewalks:** light warm concrete with visible panel joints every 1.5–2 m (a slightly darker line).
 - **Parking lots:** same asphalt as roads with white stall lines; lawn islands with curbs at the ends.
@@ -54,7 +54,8 @@ Do **not** facet buildings or roads, and do **not** make trees smooth.
 
 ## Signs
 
-- Big, bold, high-contrast **sign boards** with the real shop **name**, in our own clean sans-serif or slab font. Readable from across the parking lot.
+- Big, bold, high-contrast **sign boards** with the real shop **name**, in our own lettering: **Fredoka**, weight 600 (bundled with the app). Readable from across the parking lot.
+- Boards hang 3 m up, in equal bays along the wall, up to 1.6 times the model's size (4.8 m by 0.96 m). Shop walls are 4.5 m high to make room.
 - Board colours from the palette (`sign.red`, `sign.green`, `sign.teal`, `sign.navy`, `sign.orange`, `cream`) with white or dark text.
 - **Never copy real logos.** Names only, plus at most a simple generic icon (a leaf, a cart) drawn in our style.
 - Street furniture signs (stop, street names) are standard shapes with clean flat colours.

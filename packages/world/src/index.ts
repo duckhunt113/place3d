@@ -5,6 +5,14 @@ export const WORLD_VERSION = "0.1.0";
 export { AssetSelector } from "./assets/select.ts";
 export { FIXTURE_CENTRE, fixtureTileKeys, loadFixtureTile } from "./data/fixtures/tiles/index.ts";
 export { buildingsTouching, fillBuildingGaps, OVERLAP_SHARE } from "./data/gaps.ts";
+export {
+  createTileLoader,
+  DEFAULT_MAX_AGE_MS,
+  type LoadedTile,
+  type TileLoaderOptions,
+  type TileOrigin,
+  type WorldTileLoader,
+} from "./data/loader.ts";
 export { parseElements, parseTile } from "./data/parse.ts";
 export { prepareTile, WORLD_TILE_VERSION } from "./data/prepare.ts";
 export {
@@ -31,13 +39,16 @@ export {
 } from "./data/sources/overpass.ts";
 export { overtureBuildings } from "./data/sources/overture.ts";
 export {
+  expandBox,
   type LatLonBox,
   parseTileKey,
   sameTile,
+  TILE_MARGIN_M,
   TILE_ZOOM,
   tileAt,
   tileBounds,
   tileKey,
+  tileReach,
   tilesInRadius,
 } from "./data/tiles.ts";
 export { RuleEngine } from "./decide/engine.ts";

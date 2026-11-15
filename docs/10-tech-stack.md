@@ -22,7 +22,8 @@
 | **@dimforge/rapier3d-compat** | `apps/web/src/physics` only (and the server later); loaded as its own file                    | MVP   |
 | **Colyseus**                  | Multiplayer rooms and sync                                                                    | Later |
 | **earcut**                    | `packages/world`: triangulate outlines (buildings, lawns, lots)                               | MVP   |
-| **polygon-clipping**          | `packages/world`: clip shapes at tile edges, overlap checks                                   | MVP   |
+| **polygon-clipping**          | `packages/world`: clip shapes at tile edges, join road ribbons, cut curbs and sidewalks       | MVP   |
+| **@fontsource/fredoka**       | `apps/web/src/render`: the bundled lettering for shop signs (SIL Open Font License)           | MVP   |
 | **comlink**                   | `apps/web`: call the world Web Worker like normal functions                                   | MVP   |
 | **idb-keyval**                | `apps/web`: IndexedDB storage for the tile cache                                              | MVP   |
 

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { GeoFeature, LatLon, TileData, TileId } from "../types.ts";
-import { clipLine, featuresForTile, footprintCentre } from "./clip.ts";
+import { clipLine, featuresForTile, footprintCentre, ringTouchesBox } from "./clip.ts";
 import testTile from "./fixtures/test-tile.json" with { type: "json" };
 import { parseTile } from "./parse.ts";
 import { prepareTile, WORLD_TILE_VERSION } from "./prepare.ts";
-import { tileBounds } from "./tiles.ts";
+import { tileBounds, tileReach } from "./tiles.ts";
 
 const data = testTile as unknown as TileData;
 const TILE: TileId = data.id;
@@ -81,10 +81,33 @@ describe("roads", () => {
     expect(end(featuresForTile(all, WEST), "last")).toEqual(end(here, "first"));
   });
 
-  it("stay untouched when they are fully inside", () => {
+  it("keep their shape when they are fully inside, and start at 0 m along the road", () => {
     const driveway = here.find((f) => f.id === "way/1002");
     const original = all.find((f) => f.id === "way/1002");
-    expect(driveway).toEqual(original);
+    expect(driveway).toEqual({ ...original, offsetM: 0 });
+  });
+
+  it("say how far along the whole road each cut piece starts", () => {
+    // Test Street runs west to east through three tiles; each piece starts where the last ended.
+    const piece = (tile: TileId) => {
+      const road = featuresForTile(all, tile).find((f) => f.id === "way/1001");
+      if (road?.kind !== "road") throw new Error("no piece of Test Street in this tile");
+      return road;
+    };
+    const metres = (a: LatLon, b: LatLon) =>
+      Math.hypot(
+        (b.lat - a.lat) * 111195,
+        (b.lon - a.lon) * 111195 * Math.cos((a.lat * Math.PI) / 180),
+      );
+    const length = (line: LatLon[]) =>
+      line.slice(1).reduce((sum, p, i) => sum + metres(line[i] as LatLon, p), 0);
+    const west = piece(WEST);
+    const middle = piece(TILE);
+    const east = piece(EAST);
+    expect(west.offsetM).toBe(0);
+    expect(middle.offsetM).toBeCloseTo(length(west.line), 1);
+    expect(east.offsetM).toBeCloseTo(length(west.line) + length(middle.line), 1);
+    expect(middle.offsetM).toBeGreaterThan(10);
   });
 });
 
@@ -144,14 +167,72 @@ describe("prepareTile", () => {
     expect(prepareTile(data, "t")).toEqual(prepareTile(data, "t"));
   });
 
-  it("remembers the outlines of neighbours' buildings that reach into the tile", () => {
+  it("remembers neighbours' buildings that reach into the tile", () => {
     // way/2005 belongs to the tile to the east but pokes in; so does the second gap-fill building.
     const tile = prepareTile(data, "t");
     const reaching = all.filter(
       (f) => f.id === "way/2005" || f.id === "overture/00000000-0000-4000-8000-000000000002",
     );
-    expect(tile.blockers).toEqual(reaching.map((f) => (f.kind === "building" ? f.footprint : [])));
-    // A tile with nothing reaching in has no list at all.
-    expect(prepareTile({ ...data, elements: [], buildings: [] }, "t").blockers).toBeUndefined();
+    expect(tile.context?.buildings).toEqual(reaching);
+    // A tile with nothing around it has no surroundings at all.
+    expect(prepareTile({ ...data, elements: [], buildings: [] }, "t").context).toBeUndefined();
+  });
+
+  it("remembers every road piece within the margin around the tile, cut at the margin", () => {
+    const tile = prepareTile(data, "t");
+    const reach = tileReach(TILE);
+    const roads = tile.context?.roads ?? [];
+    // Every road of the tile is there too, and reaches at least as far as the tile's own piece.
+    const ownIds = here.filter((f) => f.kind === "road").map((f) => f.id);
+    for (const id of ownIds) expect(roads.map((road) => road.id)).toContain(id);
+    for (const road of roads) {
+      expect(road.offsetM).toBeGreaterThanOrEqual(0);
+      for (const p of road.line) {
+        expect(p.lat).toBeGreaterThanOrEqual(reach.south);
+        expect(p.lat).toBeLessThanOrEqual(reach.north);
+        expect(p.lon).toBeGreaterThanOrEqual(reach.west);
+        expect(p.lon).toBeLessThanOrEqual(reach.east);
+      }
+    }
+    // Test Street crosses the whole tile: its piece here runs from one side of the margin to the other.
+    const street = roads.find((road) => road.id === "way/1001");
+    expect(street?.line[0]?.lon).toBe(reach.west);
+    expect(street?.line[street.line.length - 1]?.lon).toBe(reach.east);
+  });
+
+  it("remembers mapped points just outside the tile, and none of its own", () => {
+    const outside = { lat: 43.5330705, lon: tileBounds(TILE).east + 0.0001 };
+    const far = { lat: 43.5330705, lon: tileBounds(TILE).east + 0.002 };
+    const more: TileData = {
+      ...data,
+      elements: [
+        ...data.elements,
+        { type: "node", id: 91, tags: { shop: "books", name: "Next Door" }, ...outside },
+        { type: "node", id: 92, tags: { shop: "books", name: "Far Away" }, ...far },
+      ],
+    };
+    const tile = prepareTile(more, "t");
+    const nearby = tile.context?.points.map((point) => point.id) ?? [];
+    expect(nearby).toContain("node/91");
+    expect(nearby).not.toContain("node/92");
+    // None of them is also one of the tile's own features.
+    for (const id of nearby) expect(tile.features.some((f) => f.id === id)).toBe(false);
+  });
+});
+
+describe("ringTouchesBox", () => {
+  const box = { south: 0, west: 0, north: 1, east: 1 };
+  const ring = (...points: [number, number][]) => points.map(([lon, lat]) => ({ lat, lon }));
+
+  it("is true for a ring inside, across an edge, or wrapped around the whole box", () => {
+    expect(ringTouchesBox(ring([0.2, 0.2], [0.4, 0.2], [0.3, 0.4]), box)).toBe(true);
+    expect(ringTouchesBox(ring([0.8, 0.5], [1.5, 0.5], [1.5, 0.7]), box)).toBe(true);
+    // No corner of this ring is inside the box, but its edge cuts across the box's corner.
+    expect(ringTouchesBox(ring([0.5, -0.5], [1.5, 0.5], [1.5, -0.5]), box)).toBe(true);
+    expect(ringTouchesBox(ring([-1, -1], [2, -1], [2, 2], [-1, 2]), box)).toBe(true);
+  });
+
+  it("is false for a ring that stays outside", () => {
+    expect(ringTouchesBox(ring([1.2, 0.2], [1.4, 0.2], [1.3, 0.4]), box)).toBe(false);
   });
 });

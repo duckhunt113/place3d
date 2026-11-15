@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "domain": "buildings",
   "note": "OSM tag rules for buildings. Most specific match wins; priority 100 = copy a real OSM tag (tags always win).",
   "rules": [
@@ -93,7 +93,8 @@
         "roof": "flat",
         "colour": ["house.beige", "house.tan", "house.white", "cream"],
         "shopSigns": true,
-        "roofColour": ["roof.dark"]
+        "roofColour": ["roof.dark"],
+        "heightM": 4.5
       }
     },
     {
@@ -126,7 +127,8 @@
         "roof": "flat",
         "colour": ["house.beige", "house.tan", "house.white", "cream"],
         "shopSigns": true,
-        "roofColour": ["roof.dark"]
+        "roofColour": ["roof.dark"],
+        "heightM": 4.5
       }
     },
     {

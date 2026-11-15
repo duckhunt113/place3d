@@ -3,15 +3,17 @@
 // It returns OSM data only: gap-fill buildings (Overture) are added when tiles are saved or built.
 
 import type { LatLon, OsmElement, TileData, TileId, TileSource } from "../../types.ts";
-import { type LatLonBox, tileBounds } from "../tiles.ts";
+import { type LatLonBox, tileReach } from "../tiles.ts";
 
 export const OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter";
 
 /**
- * Bump when the saved tile format changes (pre-built tile paths use it: tiles/v2/...).
+ * Bump when the saved tile format changes (pre-built tile paths use it: tiles/v3/...).
  * 2: tiles can carry gap-fill buildings (`buildings`).
+ * 3: the data reaches `TILE_MARGIN_M` past the tile's edges, so curbs and sidewalks line up
+ *    between tiles.
  */
-export const TILE_FORMAT_VERSION = 2;
+export const TILE_FORMAT_VERSION = 3;
 
 // What the game reads from the map. Relations are fetched for buildings only: a big water
 // relation such as a lake would pull in megabytes of outline for one tile.
@@ -30,6 +32,11 @@ const SELECTORS = [
   'node["emergency"="fire_hydrant"]',
   'node["highway"="stop"]',
 ];
+
+/** The Overpass QL query for one tile: everything that touches the tile or its margin. */
+export function tileQuery(id: TileId): string {
+  return overpassQuery(tileReach(id));
+}
 
 /** The Overpass QL query for everything that touches a box. `out geom` returns full shapes. */
 export function overpassQuery(box: LatLonBox): string {
@@ -150,7 +157,7 @@ export class OverpassTileSource implements TileSource {
   }
 
   async getTile(id: TileId): Promise<TileData> {
-    const json = await runOverpassQuery(overpassQuery(tileBounds(id)), this.#options);
+    const json = await runOverpassQuery(tileQuery(id), this.#options);
     return tileDataFromOverpass(id, json, this.#options.now());
   }
 }

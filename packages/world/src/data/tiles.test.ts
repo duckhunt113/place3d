@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { LatLon } from "../types.ts";
 import {
+  expandBox,
   parseTileKey,
   sameTile,
+  TILE_MARGIN_M,
   TILE_ZOOM,
   tileAt,
   tileBounds,
   tileKey,
+  tileReach,
   tilesInRadius,
 } from "./tiles.ts";
 
@@ -106,5 +109,27 @@ describe("tilesInRadius", () => {
 
   it("rejects a negative radius", () => {
     expect(() => tilesInRadius(LORNE_PARK, -1)).toThrow(RangeError);
+  });
+});
+
+describe("expandBox and tileReach", () => {
+  const box = tileBounds(tileAt({ lat: 43.5305, lon: -79.6119 }));
+
+  it("grows a box by the same number of metres on every side", () => {
+    const grown = expandBox(box, 30);
+    const metresPerDegree = 111319.49;
+    expect((grown.north - box.north) * metresPerDegree).toBeCloseTo(30, 3);
+    expect((box.south - grown.south) * metresPerDegree).toBeCloseTo(30, 3);
+    // A degree of longitude is shorter this far north: about 80.7 km here.
+    const lonMetres = metresPerDegree * Math.cos((box.north * Math.PI) / 180);
+    expect((grown.east - box.east) * lonMetres).toBeCloseTo(30, 2);
+    expect((box.west - grown.west) * lonMetres).toBeCloseTo(30, 2);
+  });
+
+  it("gives a tile its own box plus the margin", () => {
+    const id = tileAt({ lat: 43.5305, lon: -79.6119 });
+    expect(tileReach(id)).toEqual(expandBox(box, TILE_MARGIN_M));
+    // The margin is wider than half the widest road with its sidewalk.
+    expect(TILE_MARGIN_M).toBeGreaterThan(17.5 / 2 + 2);
   });
 });

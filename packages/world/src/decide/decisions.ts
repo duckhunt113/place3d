@@ -102,6 +102,7 @@ export function decideRoad(engine: RuleEngine, road: Road): RoadDecision | undef
     sidewalks: sidewalks(v.sidewalks),
     curbs: v.curbs === true,
     markings: v.markings === "centre" ? "centre" : "none",
+    stalls: v.stalls === true,
     surface: text(v.surface, "asphalt"),
     rules: result.rules,
     source: sourceOf(result, road.id),
@@ -151,26 +152,47 @@ export function decideArea(engine: RuleEngine, area: Area): AreaDecision | undef
     id: area.id,
     surface: v.surface,
     layer: Math.max(0, parseNumber(v.layer) ?? 1),
+    markings: v.markings === "stalls" ? "stalls" : "none",
     scatter: toScatter(v.scatter),
     rules: result.rules,
     source: sourceOf(result, area.id),
   };
 }
 
+/** Names longer than this are cut short on signs. */
+const MAX_SIGN_TEXT = 48;
+
 /**
- * Which kind of model a mapped point becomes. Undefined for points no rule turns into a
- * model (shops, for example), and for rules that place things along a line.
+ * Which kind of model a mapped point becomes: a model at its own spot, or a name sign on a
+ * wall. Undefined for points no rule turns into a model, for rules that place things along
+ * a line, and for signs with nothing to say.
  */
-export function decideObject(engine: RuleEngine, point: Point): ObjectDecision | undefined {
+export function decideObject(
+  engine: RuleEngine,
+  point: Pick<Point, "id" | "tags">,
+): ObjectDecision | undefined {
   const result = engine.decide("objects", point.tags);
-  if (result?.values.place !== "point") return undefined;
+  const place = result?.values.place;
+  if (!result || (place !== "point" && place !== "wall")) return undefined;
   const asset = toAssetRequest(result.values.asset);
   if (!asset) return undefined;
-  return {
+  const decision: ObjectDecision = {
     kind: "object",
     id: point.id,
+    place,
     asset,
     rules: result.rules,
     source: sourceOf(result, point.id),
   };
+  const colours = Array.isArray(result.values.colour)
+    ? result.values.colour.filter((c): c is ColorName => typeof c === "string")
+    : [];
+  if (colours.length > 0) decision.colour = createRng(`${point.id}/colour`).pick(colours);
+  if (place === "wall") {
+    const words = text(result.values.text, "").replace(/\s+/g, " ").trim();
+    if (words === "") return undefined;
+    decision.text =
+      words.length > MAX_SIGN_TEXT ? `${words.slice(0, MAX_SIGN_TEXT - 1).trim()}…` : words;
+  }
+  return decision;
 }

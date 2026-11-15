@@ -10,6 +10,7 @@ import { AssetLibrary } from "./assets.ts";
 import { disposeInstances, placementsToGroup } from "./instances.ts";
 import { createLighting } from "./lighting.ts";
 import { createSurfaceMaterial, PaletteColours, tileToMesh } from "./meshes.ts";
+import { disposeSigns, signsToMesh } from "./signs.ts";
 import { addSky } from "./sky.ts";
 
 /** Walking shows the world through the player's eyes; free is the fly-around camera. */
@@ -42,6 +43,8 @@ const WALK_SHADOW_RADIUS_M = 120;
 const WALK_SHADOW_STEP_M = 16;
 /** Leaving walking, the free camera starts this far behind and above the player. */
 const FREE_START = { backM: 70, upM: 80 };
+/** The draw-call and triangle counts on screen are refreshed this often. */
+const COUNT_EVERY_FRAMES = 30;
 /** A frame never counts for longer than this, so a pause does not become a leap. */
 const MAX_FRAME_SECONDS = 0.1;
 
@@ -67,7 +70,9 @@ export function createWorldView(
   const sky = addSky(scene);
   const lighting = createLighting(scene);
 
-  type Shown = { ground: THREE.Mesh; models?: THREE.Group };
+  type Shown = { ground: THREE.Mesh; models?: THREE.Group; signs?: THREE.Mesh };
+  /** The best texture filtering this machine offers; it keeps sign names sharp at an angle. */
+  const sharpest = renderer.capabilities.getMaxAnisotropy();
   const tiles = new Map<string, Shown>();
   const remove = (shown: Shown) => {
     world.remove(shown.ground);
@@ -75,6 +80,10 @@ export function createWorldView(
     if (shown.models) {
       world.remove(shown.models);
       disposeInstances(shown.models);
+    }
+    if (shown.signs) {
+      world.remove(shown.signs);
+      disposeSigns(shown.signs);
     }
   };
   const world = new THREE.Group();
@@ -104,6 +113,12 @@ export function createWorldView(
   stats.dom.style.top = "auto";
   stats.dom.style.bottom = "0";
   container.append(stats.dom);
+  // Next to the FPS counter: how much is drawn each frame (the shadow pass included), to
+  // check against the budgets in CLAUDE.md (hard rule 7).
+  const drawn = document.createElement("div");
+  drawn.className = "render-stats";
+  container.append(drawn);
+  let framesSinceCount = COUNT_EVERY_FRAMES - 1;
 
   const resize = () => {
     const width = container.clientWidth || window.innerWidth;
@@ -135,6 +150,11 @@ export function createWorldView(
     if (mode === "free") controls.update();
     renderer.render(scene, camera());
     stats.update();
+    if (++framesSinceCount >= COUNT_EVERY_FRAMES) {
+      framesSinceCount = 0;
+      const { calls, triangles } = renderer.info.render;
+      drawn.textContent = `${calls} draw calls, ${(triangles / 1e6).toFixed(2)} M triangles`;
+    }
   });
 
   return {
@@ -177,10 +197,19 @@ export function createWorldView(
       world.add(shown.ground);
       if (tile.placements.length === 0) return;
       // Models arrive a moment later; skip them if the tile was replaced or cleared meanwhile.
-      void library.load(tile.placements.map((p) => p.asset)).then(() => {
+      void library.load(tile.placements.map((p) => p.asset)).then(async () => {
         if (tiles.get(tile.key) !== shown) return;
         shown.models = placementsToGroup(tile.placements, library, surface);
         world.add(shown.models);
+        // Shop names are drawn once their boards are in place.
+        const names = await signsToMesh(tile.placements, library, colours, sharpest);
+        if (!names) return;
+        if (tiles.get(tile.key) !== shown) {
+          disposeSigns(names);
+          return;
+        }
+        shown.signs = names;
+        world.add(names);
       });
     },
     clear() {

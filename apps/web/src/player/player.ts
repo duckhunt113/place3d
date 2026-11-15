@@ -3,7 +3,7 @@
 import type { Spawn } from "@somewhere/world";
 import type { Physics, Vec3 } from "../physics/world.ts";
 import { createInput } from "./input.ts";
-import { type Bounds, createWalker, PLAYER } from "./walker.ts";
+import { createWalker, type KeepInside, PLAYER } from "./walker.ts";
 
 export type Eye = {
   /** Where the eyes are, in local metres. */
@@ -20,8 +20,8 @@ export type Player = {
   eye(): Eye;
   /** Puts the player at a starting point, facing its direction. */
   spawn(spawn: Spawn): void;
-  /** Keeps the player inside a circle on the ground. */
-  setBounds(bounds: Bounds | undefined): void;
+  /** Keeps the player inside the walkable area. */
+  setBounds(keepInside: KeepInside | undefined): void;
   /** Turns the walking controls on or off. */
   setActive(active: boolean): void;
 };
@@ -61,7 +61,7 @@ export function createPlayer(physics: Physics, surface: HTMLElement): Player {
       eyeY = start[1] + PLAYER.eyeHeightM;
       input.face(spawn.yaw);
     },
-    setBounds: (bounds) => walker.setBounds(bounds),
+    setBounds: (keepInside) => walker.setBounds(keepInside),
     setActive: (active) => input.setEnabled(active),
   };
 }

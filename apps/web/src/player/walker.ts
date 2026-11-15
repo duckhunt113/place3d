@@ -35,8 +35,11 @@ export type Intent = {
   yaw: number;
 };
 
-/** The walkable area: a circle on the ground, in local metres. */
-export type Bounds = { centre: [number, number]; radiusM: number };
+/**
+ * The walkable area: given a spot on the ground (local metres), returns the nearest spot
+ * the player may stand on. A spot inside the area comes back unchanged.
+ */
+export type KeepInside = (x: number, z: number) => [number, number];
 
 export type Walker = {
   /** Moves time forward by `seconds`, following the intent. */
@@ -47,8 +50,8 @@ export type Walker = {
   grounded(): boolean;
   /** Puts the player somewhere, standing still. */
   place(feet: Vec3): void;
-  /** Keeps the player inside a circle, or anywhere when left out. */
-  setBounds(bounds: Bounds | undefined): void;
+  /** Keeps the player inside the walkable area, or lets them go anywhere when left out. */
+  setBounds(keepInside: KeepInside | undefined): void;
 };
 
 export function createWalker(character: Character): Walker {
@@ -57,7 +60,7 @@ export function createWalker(character: Character): Walker {
   let fallSpeed = 0;
   let onGround = false;
   let leftover = 0;
-  let bounds: Bounds | undefined;
+  let keepInside: KeepInside | undefined;
 
   const step = (intent: Intent): void => {
     // The direction asked for, turned to where the player faces; diagonals are no faster.
@@ -69,16 +72,11 @@ export function createWalker(character: Character): Walker {
     let dx = (intent.forward * sin + intent.right * cos) * scale;
     let dz = (-intent.forward * cos + intent.right * sin) * scale;
 
-    if (bounds) {
-      // Past the edge, aim for the nearest point on the circle instead: the player slides along it.
-      const tx = now[0] + dx - bounds.centre[0];
-      const tz = now[2] + dz - bounds.centre[1];
-      const distance = Math.hypot(tx, tz);
-      if (distance > bounds.radiusM) {
-        const pull = bounds.radiusM / distance;
-        dx = bounds.centre[0] + tx * pull - now[0];
-        dz = bounds.centre[1] + tz * pull - now[2];
-      }
+    if (keepInside) {
+      // Past the edge, aim for the nearest allowed spot instead: the player slides along the edge.
+      const [x, z] = keepInside(now[0] + dx, now[2] + dz);
+      dx = x - now[0];
+      dz = z - now[2];
     }
 
     if (onGround) {
@@ -123,7 +121,7 @@ export function createWalker(character: Character): Walker {
       leftover = 0;
     },
     setBounds(next) {
-      bounds = next;
+      keepInside = next;
     },
   };
 }

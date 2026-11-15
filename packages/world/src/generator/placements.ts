@@ -19,6 +19,7 @@ import type {
 } from "../types.ts";
 import { type Pair, pointInRing } from "../util/geometry.ts";
 import { createRng } from "../util/rng.ts";
+import { roadReach } from "./roads.ts";
 
 /** Scatter grid cell size in global Web Mercator metres (about 4.3 m on the ground near Toronto). */
 export const SCATTER_CELL = 6;
@@ -35,6 +36,7 @@ const SIZE_RANGE: [number, number] = [0.85, 1.15];
 
 export type ScatterArea = { decision: AreaDecision; outline: Vec2[]; holes: Vec2[][] };
 export type RoadShape = { decision: RoadDecision; line: Vec2[] };
+/** A mapped thing that stands at its own spot (decisions with place "point"). */
 export type MappedObject = { decision: ObjectDecision; at: Vec2 };
 
 export type PlacementInput = {
@@ -89,7 +91,8 @@ function isClear(p: Vec2, entry: AssetEntry, input: PlacementInput): boolean {
   }
   const fromRoads = Math.max(MIN_CLEARANCE_M, half * ROAD_CLEARANCE);
   for (const road of input.roads) {
-    const reach = road.decision.widthM / 2 + fromRoads;
+    // Clear of the road and of its curb and sidewalk.
+    const reach = roadReach(road.decision) + fromRoads;
     for (let i = 0; i + 1 < road.line.length; i++) {
       if (distanceToSegment(p, road.line[i] as Vec2, road.line[i + 1] as Vec2).distance < reach) {
         return false;

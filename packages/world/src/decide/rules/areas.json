@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "domain": "areas",
   "note": "OSM tag rules for areas: surface = palette colour name; layer = drawing order where areas overlap (higher is drawn on top: 1 land use, 2 green, 3 hard or sandy surfaces, 4 water); scatter = seeded asset requests per square metre.",
   "rules": [
@@ -142,8 +142,9 @@
       },
       "then": {
         "surface": "paving",
-        "layer": 1
-      }
+        "layer": 1.5
+      },
+      "note": "Layer 1.5: above the residential land use it often overlaps, below parks and car parks. Two areas on the same layer would flicker where they overlap."
     },
     {
       "id": "area.bare",
@@ -152,8 +153,9 @@
       },
       "then": {
         "surface": "sand",
-        "layer": 1
-      }
+        "layer": 1.5
+      },
+      "note": "Layer 1.5: above the residential land use it often overlaps, below parks and car parks. Two areas on the same layer would flicker where they overlap."
     }
   ]
 }

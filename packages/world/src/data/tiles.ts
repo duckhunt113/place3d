@@ -15,6 +15,34 @@ const TILE_SIZE = WORLD / TILES;
 
 export type LatLonBox = { south: number; west: number; north: number; east: number };
 
+/**
+ * How far past its own edges a tile's map data reaches, in metres. A road just outside a tile
+ * still puts its sidewalk inside it, so each tile must know its close surroundings.
+ * Wider than half the widest road plus its sidewalk.
+ */
+export const TILE_MARGIN_M = 30;
+/** Metres per degree of latitude. */
+const METRES_PER_DEGREE = (Math.PI * R) / 180;
+
+/** A box grown by `metres` on every side. */
+export function expandBox(box: LatLonBox, metres: number): LatLonBox {
+  const dLat = metres / METRES_PER_DEGREE;
+  // A degree of longitude is shortest at the edge furthest from the equator: use that edge.
+  const furthest = Math.max(Math.abs(box.south), Math.abs(box.north));
+  const dLon = metres / (METRES_PER_DEGREE * Math.cos(furthest * DEG));
+  return {
+    south: box.south - dLat,
+    west: box.west - dLon,
+    north: box.north + dLat,
+    east: box.east + dLon,
+  };
+}
+
+/** A tile's box plus the margin: the area its map data covers. */
+export function tileReach(id: TileId): LatLonBox {
+  return expandBox(tileBounds(id), TILE_MARGIN_M);
+}
+
 function clampIndex(value: number): number {
   return Math.min(TILES - 1, Math.max(0, value));
 }

@@ -4,7 +4,7 @@
 
 import polygonClipping from "polygon-clipping";
 import type { GeoFeature, LatLon, TileId } from "../types.ts";
-import { centroid, type Pair } from "../util/geometry.ts";
+import { centroid, type Pair, pointInRing } from "../util/geometry.ts";
 import { type LatLonBox, sameTile, tileAt, tileBounds } from "./tiles.ts";
 
 type Road = Extract<GeoFeature, { kind: "road" }>;
@@ -65,29 +65,74 @@ function clipSegment(a: LatLon, b: LatLon, box: LatLonBox): [LatLon, LatLon] | u
   return [at(t0, enter), at(t1, leave)];
 }
 
-/** Cuts a line to the box. A line that leaves and comes back gives several pieces. */
-export function clipLine(line: readonly LatLon[], box: LatLonBox): LatLon[][] {
-  const pieces: LatLon[][] = [];
+const DEG = Math.PI / 180;
+/** Mean Earth radius in metres. */
+const EARTH_RADIUS = 6371008.8;
+
+/** Ground distance between two nearby points, in metres. */
+function metresBetween(a: LatLon, b: LatLon): number {
+  const dLat = (b.lat - a.lat) * DEG;
+  const dLon = (b.lon - a.lon) * DEG * Math.cos(((a.lat + b.lat) / 2) * DEG);
+  return EARTH_RADIUS * Math.hypot(dLat, dLon);
+}
+
+export type LinePiece = {
+  line: LatLon[];
+  /** Metres along the whole line from its first point to this piece's first point. */
+  offsetM: number;
+};
+
+/**
+ * Cuts a line to the box. A line that leaves and comes back gives several pieces. Each piece
+ * says how far along the whole line it starts.
+ */
+export function clipLinePieces(line: readonly LatLon[], box: LatLonBox): LinePiece[] {
+  const pieces: LinePiece[] = [];
   let current: LatLon[] | undefined;
+  let travelled = 0;
   for (let i = 0; i + 1 < line.length; i++) {
     const a = line[i] as LatLon;
     const b = line[i + 1] as LatLon;
     const inside = clipSegment(a, b, box);
-    if (!inside) {
+    if (inside) {
+      const [start, end] = inside;
+      if (current && start === a) current.push(end);
+      else {
+        current = [start, end];
+        pieces.push({ line: current, offsetM: travelled + metresBetween(a, start) });
+      }
+      if (end !== b) current = undefined;
+    } else {
       current = undefined;
-      continue;
     }
-    const [start, end] = inside;
-    if (current && start === a) current.push(end);
-    else {
-      current = [start, end];
-      pieces.push(current);
-    }
-    if (end !== b) current = undefined;
+    travelled += metresBetween(a, b);
   }
-  return pieces.filter((piece) =>
+  return pieces.filter(({ line: piece }) =>
     piece.some((p) => p.lat !== (piece[0] as LatLon).lat || p.lon !== (piece[0] as LatLon).lon),
   );
+}
+
+/** Cuts a line to the box. A line that leaves and comes back gives several pieces. */
+export function clipLine(line: readonly LatLon[], box: LatLonBox): LatLon[][] {
+  return clipLinePieces(line, box).map((piece) => piece.line);
+}
+
+/** The pieces of one road inside a box, each knowing how far along the road it starts. */
+export function roadPieces(road: Road, box: LatLonBox): Road[] {
+  return clipLinePieces(road.line, box).map(
+    ({ line, offsetM }): Road => ({ kind: "road", id: road.id, line, tags: road.tags, offsetM }),
+  );
+}
+
+/** True if any part of the ring is inside the box, or the box is inside the ring. */
+export function ringTouchesBox(ring: readonly LatLon[], box: LatLonBox): boolean {
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i] as LatLon;
+    const b = ring[(i + 1) % ring.length] as LatLon;
+    if (clipSegment(a, b, box)) return true;
+  }
+  // No edge comes inside: the ring is either wholly outside, or wraps around the whole box.
+  return pointInRing([box.west, box.south], ring.map(toPair));
 }
 
 function clipArea(area: Area, box: LatLonBox): Area[] {
@@ -133,10 +178,7 @@ export function featuresForTile(features: readonly GeoFeature[], id: TileId): Ge
     } else if (feature.kind === "point") {
       if (sameTile(tileAt(feature.at), id)) out.push(feature);
     } else if (feature.kind === "road") {
-      for (const line of clipLine(feature.line, box)) {
-        const piece: Road = { kind: "road", id: feature.id, line, tags: feature.tags };
-        out.push(piece);
-      }
+      out.push(...roadPieces(feature, box));
     } else {
       out.push(...clipArea(feature, box));
     }

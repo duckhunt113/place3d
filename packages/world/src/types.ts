@@ -47,7 +47,18 @@ export type Tags = Record<string, string>;
  */
 export type FeatureOf<P> =
   | { kind: "building"; id: FeatureId; footprint: P[]; tags: Tags }
-  | { kind: "road"; id: FeatureId; line: P[]; tags: Tags }
+  | {
+      kind: "road";
+      id: FeatureId;
+      line: P[];
+      tags: Tags;
+      /**
+       * Metres along the whole mapped road from its first point to this piece's first point.
+       * Every tile measures it on the same whole road, so things spaced along a road
+       * (parking stalls, sidewalk joints) line up across tile edges.
+       */
+      offsetM?: number;
+    }
   | { kind: "area"; id: FeatureId; outline: P[]; holes?: P[][]; tags: Tags }
   | { kind: "point"; id: FeatureId; at: P; tags: Tags };
 export type GeoFeature = FeatureOf<LatLon>;
@@ -95,6 +106,8 @@ export type RoadDecision = {
   sidewalks: "both" | "left" | "right" | "none";
   curbs: boolean;
   markings: "none" | "centre";
+  /** True for a parking aisle: stalls are painted along both of its sides inside a parking lot. */
+  stalls: boolean;
   /** A palette colour name. */
   surface: ColorName;
   rules: string[];
@@ -111,16 +124,27 @@ export type AreaDecision = {
   surface: ColorName;
   /** Drawing order where areas overlap: higher is drawn on top. */
   layer: number;
+  /** "stalls": a parking lot, painted with stall lines. */
+  markings: "none" | "stalls";
   scatter: ScatterRule[];
   rules: string[];
   source: DecisionSource;
 };
 
-/** A single mapped thing that becomes a model: a hydrant, a stop sign, a mapped tree. */
+/**
+ * A single mapped thing that becomes a model: a hydrant, a stop sign, a mapped tree
+ * (place "point": it stands at its mapped spot), or a shop's name sign (place "wall": it
+ * hangs on the nearest building's front wall).
+ */
 export type ObjectDecision = {
   kind: "object";
   id: FeatureId;
+  place: "point" | "wall";
   asset: AssetRequest;
+  /** What a sign says: the place's real name. */
+  text?: string;
+  /** A palette colour name for the sign's face, picked with the feature's own seed. */
+  colour?: ColorName;
   rules: string[];
   source: DecisionSource;
 };
@@ -136,7 +160,10 @@ export type Placement = {
   pos: [number, number, number];
   rotY: number;
   scale: number;
-  tint?: string;
+  /** A palette colour name for the model's text face (a sign's background). */
+  tint?: ColorName;
+  /** Words to draw on the model's text face (a shop's name). */
+  text?: string;
 };
 
 /**
@@ -275,12 +302,12 @@ export type ExtraBuilding = {
 
 export type TileData = {
   id: TileId;
-  /** Tile format version; pre-built paths use it (tiles/v2/...). */
+  /** Tile format version; pre-built paths use it (tiles/v3/...). */
   version: number;
   /** Where the OSM elements came from: "overpass" | "prebuilt". A saved file keeps the original. */
   source: string;
   fetchedAt: string;
-  /** OSM data: everything that touches the tile, not only what lies inside it. */
+  /** OSM data: everything that touches the tile or the margin around it, as whole shapes. */
   elements: OsmElement[];
   /**
    * Gap-fill buildings that touch the tile (MVP: from Overture Maps). The source has already
@@ -301,12 +328,31 @@ export type WorldTile = {
   /** Bump when parsing or the format changes. */
   version: number;
   generatedAt: string;
+  /** What belongs to this tile and is built here. */
   features: GeoFeature[];
   /**
-   * Outlines of buildings that reach into this tile but belong to a neighbour. They are not
-   * built here; they only keep scattered trees and props out of those buildings.
+   * What surrounds the tile's own features. Nothing in here is built as such; it only
+   * shapes what is built, so that neighbouring tiles agree along their shared edge.
    */
-  blockers?: LatLon[][];
+  context?: TileContext;
+};
+
+export type TileContext = {
+  /**
+   * Buildings that reach into this tile but belong to a neighbour. They keep scattered trees
+   * out, and a shop inside this tile can hang its sign on one.
+   */
+  buildings: Extract<GeoFeature, { kind: "building" }>[];
+  /**
+   * Every road piece within the tile margin (the tile's own included), cut at the margin's
+   * edge. Junctions, curbs and sidewalks are shaped from these and then cut at the tile edge.
+   */
+  roads: Extract<GeoFeature, { kind: "road" }>[];
+  /**
+   * Mapped points in the margin that belong to a neighbour. A shop just across the edge
+   * may want the same spot on a shared wall for its sign; both tiles then agree who gets it.
+   */
+  points: Extract<GeoFeature, { kind: "point" }>[];
 };
 
 /** Defined here, implemented per platform (IndexedDB in the web app, files or a database on the server). */

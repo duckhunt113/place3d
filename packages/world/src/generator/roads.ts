@@ -1,82 +1,247 @@
-// Roads and paths as flat ribbons along their lines. First pass: simple joins, where ribbons
-// overlap and a round cap fills the gap at every end. Clean intersections come later.
+// Streets: every road, path, curb and sidewalk of a tile worked out together as flat shapes,
+// so junctions are clean (no overlapping ribbons) and sidewalks wrap neatly around corners.
+//
+// How: thicken every road line into a ribbon, join all ribbons into one driving surface, do
+// the same with wider ribbons for the curb and the sidewalk, and cut the driving surface out
+// of those. A driveway therefore cuts through the curb by itself.
 
-import type { RoadDecision, Vec2 } from "../types.ts";
-import type { MeshSet, Uv, Vec3 } from "./mesh.ts";
+import type { ColorName, RoadDecision, Vec2 } from "../types.ts";
+import type { Pair } from "../util/geometry.ts";
+import {
+  cutAway,
+  join,
+  overlap,
+  type RibbonEnds,
+  ribbonPieces,
+  type Shape,
+  unite,
+} from "../util/shapes.ts";
+import { addFlat } from "./ground.ts";
+import type { MeshSet } from "./mesh.ts";
 
-/** Heights above the ground, so roads and paths never fight the ground for the same pixels. */
+/** Heights above the ground, so roads, paths and paint never fight for the same pixels. */
 export const ROAD_Y = 0.03;
 export const PATH_Y = 0.05;
+/** Painted lines sit just above the road. */
+export const MARKING_Y = ROAD_Y + 0.012;
 
-const UP: Vec3 = [0, 1, 0];
-const CAP_SIDES = 8;
-/** A sharp corner would stretch the ribbon's outer edge far away; never more than this times the half-width. */
-const MAX_MITRE = 2;
+/** The curb: a strip this wide along the road's edge, raised by CURB_HEIGHT_M. */
+export const CURB_WIDTH_M = 0.3;
+export const CURB_HEIGHT_M = 0.15;
+/** The sidewalk beyond the curb, at the same height. */
+export const SIDEWALK_WIDTH_M = 1.5;
+/** Width of a painted centre line. Wider than real paint, so it reads from a distance. */
+export const CENTRE_LINE_M = 0.2;
+export const CENTRE_LINE_COLOUR: ColorName = "road.yellow";
+/** A centre line stops this far short of the edge of a road it meets. */
+const JUNCTION_CLEAR_M = 1.5;
 
-function withoutNearRepeats(line: readonly Vec2[]): Vec2[] {
-  const out: Vec2[] = [];
-  for (const p of line) {
-    const last = out[out.length - 1];
-    if (!last || Math.hypot(p[0] - last[0], p[1] - last[1]) > 0.01) out.push(p);
-  }
-  return out;
+/** One piece of a road inside the tile's margin, in local metres, with its decision. */
+export type RoadPiece = {
+  decision: RoadDecision;
+  line: Vec2[];
+  /** Metres along the whole road to this piece's first point. */
+  offsetM: number;
+  /** True where the piece was cut at the margin's edge instead of ending at a real end. */
+  cutStart: boolean;
+  cutEnd: boolean;
+};
+
+/** How far the curb and the sidewalk reach beyond each edge of the road. */
+export function sideWidths(decision: RoadDecision): {
+  curb: number;
+  left: number;
+  right: number;
+} {
+  if (decision.kind === "path") return { curb: 0, left: 0, right: 0 };
+  const curb = decision.curbs ? CURB_WIDTH_M : 0;
+  const walk = (side: "left" | "right") =>
+    decision.sidewalks === "both" || decision.sidewalks === side ? SIDEWALK_WIDTH_M : 0;
+  return { curb, left: curb + walk("left"), right: curb + walk("right") };
 }
 
-/** Adds one road or path to the tile's meshes, in its surface colour. */
-export function addRoad(meshes: MeshSet, line: readonly Vec2[], decision: RoadDecision): void {
-  const points = withoutNearRepeats(line);
-  if (points.length < 2 || !(decision.widthM > 0)) return;
-  const mesh = meshes.get(decision.surface);
-  const half = decision.widthM / 2;
-  const y = decision.kind === "path" ? PATH_Y : ROAD_Y;
-  const at = (p: Vec2): Vec3 => [p[0], y, p[1]];
-  const uv = (p: Vec2): Uv => [p[0], p[1]];
+/** The furthest anything belonging to the road reaches from its centre line. */
+export function roadReach(decision: RoadDecision): number {
+  const sides = sideWidths(decision);
+  return decision.widthM / 2 + Math.max(sides.left, sides.right);
+}
 
-  // The sideways direction (unit length) of each segment.
-  const sides: Vec2[] = [];
-  for (let i = 0; i + 1 < points.length; i++) {
-    const a = points[i] as Vec2;
-    const b = points[i + 1] as Vec2;
-    const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    sides.push([-(b[1] - a[1]) / length, (b[0] - a[0]) / length]);
+/** Everything a tile's streets are made of, as flat shapes (not yet cut to the tile's edges). */
+export type StreetPlan = {
+  /** Driving surfaces, one shape per surface colour. */
+  roadways: { colour: ColorName; shape: Shape }[];
+  /** All driving surfaces together. */
+  driving: Shape;
+  /** Footpaths and cycle paths, with roads and sidewalks cut out. */
+  paths: { colour: ColorName; shape: Shape }[];
+  /** The raised strip along road edges. */
+  curb: Shape;
+  /** The raised walkway beyond the curb. */
+  sidewalk: Shape;
+  /** Curb and sidewalk together: everything that stands CURB_HEIGHT_M above the road. */
+  raised: Shape;
+  /** Painted centre lines. */
+  centreLines: Shape;
+};
+
+const nodeKey = (p: Vec2): string => `${Math.round(p[0] * 100)},${Math.round(p[1] * 100)}`;
+
+type Visit = { piece: number; isEnd: boolean };
+type Node = { point: Vec2; visits: Visit[] };
+
+/** Which pieces pass through or end at each point (points match to the centimetre). */
+function indexNodes(pieces: readonly RoadPiece[]): Map<string, Node> {
+  const nodes = new Map<string, Node>();
+  pieces.forEach((piece, index) => {
+    piece.line.forEach((point, i) => {
+      // A piece's cut end is not a real place where roads meet.
+      const isFirst = i === 0;
+      const isLast = i === piece.line.length - 1;
+      if ((isFirst && piece.cutStart) || (isLast && piece.cutEnd)) return;
+      const key = nodeKey(point);
+      const node = nodes.get(key) ?? { point, visits: [] };
+      node.visits.push({ piece: index, isEnd: isFirst || isLast });
+      nodes.set(key, node);
+    });
+  });
+  return nodes;
+}
+
+/**
+ * How round each end of each piece is, for ribbons of the given half-widths. A dead end gets
+ * a full round end. Where roads meet, the end is only as round as the narrowest road there,
+ * so a wide road never bulges out of the far side of a narrow one. Cut ends stay square.
+ */
+function roundEnds(
+  pieces: readonly RoadPiece[],
+  nodes: Map<string, Node>,
+  halfWidth: (piece: RoadPiece) => number,
+  takesPart: (piece: RoadPiece) => boolean,
+): RibbonEnds[] {
+  return pieces.map((piece, index) => {
+    const own = halfWidth(piece);
+    const at = (point: Vec2 | undefined, cut: boolean): number => {
+      if (!point || cut) return 0;
+      let radius = own;
+      for (const visit of nodes.get(nodeKey(point))?.visits ?? []) {
+        const other = pieces[visit.piece] as RoadPiece;
+        if (visit.piece !== index && takesPart(other)) radius = Math.min(radius, halfWidth(other));
+      }
+      return radius;
+    };
+    return {
+      start: at(piece.line[0], piece.cutStart),
+      end: at(piece.line[piece.line.length - 1], piece.cutEnd),
+    };
+  });
+}
+
+function byColour(parts: Map<ColorName, Pair[][]>): { colour: ColorName; shape: Shape }[] {
+  return [...parts.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([colour, rings]) => ({ colour, shape: unite(rings) }))
+    .filter((layer) => layer.shape.length > 0);
+}
+
+/** A circle drawn with 16 flat sides. */
+function disc(centre: Vec2, radius: number): Pair[] {
+  const ring: Pair[] = [];
+  for (let i = 0; i < 16; i++) {
+    const angle = (i / 16) * 2 * Math.PI;
+    ring.push([centre[0] + Math.cos(angle) * radius, centre[1] + Math.sin(angle) * radius]);
   }
+  return ring;
+}
 
-  // The ribbon's two edges at every point; corners are mitred.
-  const left: Vec2[] = [];
-  const right: Vec2[] = [];
-  for (let i = 0; i < points.length; i++) {
-    const p = points[i] as Vec2;
-    const before = sides[Math.max(0, i - 1)] as Vec2;
-    const after = sides[Math.min(sides.length - 1, i)] as Vec2;
-    let mx = before[0] + after[0];
-    let mz = before[1] + after[1];
-    const length = Math.hypot(mx, mz);
-    if (length < 1e-6) {
-      // A U-turn: no sensible mitre, so just use the next segment's side.
-      mx = after[0];
-      mz = after[1];
-    } else {
-      mx /= length;
-      mz /= length;
+/** Works out the shapes of all streets from the road pieces in and around a tile. */
+export function planStreets(pieces: readonly RoadPiece[]): StreetPlan {
+  const nodes = indexNodes(pieces);
+  const isRoad = (piece: RoadPiece) => piece.decision.kind !== "path";
+  const isPath = (piece: RoadPiece) => piece.decision.kind === "path";
+  const half = (piece: RoadPiece) => piece.decision.widthM / 2;
+
+  // Driving surfaces.
+  const roadEnds = roundEnds(pieces, nodes, half, isRoad);
+  const roadParts = new Map<ColorName, Pair[][]>();
+  pieces.forEach((piece, i) => {
+    if (!isRoad(piece)) return;
+    const rings = roadParts.get(piece.decision.surface) ?? [];
+    rings.push(...ribbonPieces(piece.line, half(piece), half(piece), roadEnds[i]));
+    roadParts.set(piece.decision.surface, rings);
+  });
+  const roadways = byColour(roadParts);
+  const driving =
+    roadways.length === 1 ? (roadways[0]?.shape ?? []) : join(...roadways.map((r) => r.shape));
+
+  // Curbs and sidewalks: the same lines, thickened further, with the driving surface cut out.
+  const curbReach = (piece: RoadPiece) => half(piece) + sideWidths(piece.decision).curb;
+  const curbEnds = roundEnds(pieces, nodes, curbReach, isRoad);
+  const walkEnds = roundEnds(pieces, nodes, (piece) => roadReach(piece.decision), isRoad);
+  const curbRings: Pair[][] = [];
+  const walkRings: Pair[][] = [];
+  pieces.forEach((piece, i) => {
+    if (!isRoad(piece)) return;
+    const sides = sideWidths(piece.decision);
+    if (sides.curb > 0) {
+      curbRings.push(...ribbonPieces(piece.line, curbReach(piece), curbReach(piece), curbEnds[i]));
     }
-    const stretch = Math.min(MAX_MITRE, 1 / Math.max(1e-6, mx * after[0] + mz * after[1]));
-    left.push([p[0] + mx * half * stretch, p[1] + mz * half * stretch]);
-    right.push([p[0] - mx * half * stretch, p[1] - mz * half * stretch]);
-  }
-
-  for (let i = 0; i + 1 < points.length; i++) {
-    const [a, b, c, d] = [left[i], right[i], right[i + 1], left[i + 1]] as [Vec2, Vec2, Vec2, Vec2];
-    mesh.addQuad(at(a), at(b), at(c), at(d), UP, [uv(a), uv(b), uv(c), uv(d)]);
-  }
-
-  // Round caps at both ends fill the gaps where roads meet at an angle.
-  for (const centre of [points[0] as Vec2, points[points.length - 1] as Vec2]) {
-    for (let i = 0; i < CAP_SIDES; i++) {
-      const a0 = (i / CAP_SIDES) * 2 * Math.PI;
-      const a1 = ((i + 1) / CAP_SIDES) * 2 * Math.PI;
-      const p0: Vec2 = [centre[0] + Math.cos(a0) * half, centre[1] + Math.sin(a0) * half];
-      const p1: Vec2 = [centre[0] + Math.cos(a1) * half, centre[1] + Math.sin(a1) * half];
-      mesh.addTriangle(at(centre), at(p0), at(p1), UP, uv(centre), uv(p0), uv(p1));
+    if (sides.left > sides.curb || sides.right > sides.curb) {
+      walkRings.push(
+        ...ribbonPieces(
+          piece.line,
+          half(piece) + sides.left,
+          half(piece) + sides.right,
+          walkEnds[i],
+        ),
+      );
     }
+  });
+  const curbOuter = unite(curbRings);
+  const walkOuter = unite(walkRings);
+  const curb = cutAway(curbOuter, driving);
+  const sidewalk = cutAway(walkOuter, curbOuter, driving);
+  const raised = cutAway(join(curbOuter, walkOuter), driving);
+
+  // Paths end where they meet a road or a sidewalk.
+  const pathEnds = roundEnds(pieces, nodes, half, isPath);
+  const pathParts = new Map<ColorName, Pair[][]>();
+  pieces.forEach((piece, i) => {
+    if (!isPath(piece)) return;
+    const rings = pathParts.get(piece.decision.surface) ?? [];
+    rings.push(...ribbonPieces(piece.line, half(piece), half(piece), pathEnds[i]));
+    pathParts.set(piece.decision.surface, rings);
+  });
+  const paths = byColour(pathParts)
+    .map((layer) => ({ colour: layer.colour, shape: cutAway(layer.shape, driving, raised) }))
+    .filter((layer) => layer.shape.length > 0);
+
+  // Centre lines, broken where three or more street arms meet.
+  const isStreet = (piece: RoadPiece) => piece.decision.kind === "road" && piece.decision.curbs;
+  const lineRings: Pair[][] = [];
+  for (const piece of pieces) {
+    if (piece.decision.markings !== "centre" || !isRoad(piece)) continue;
+    lineRings.push(...ribbonPieces(piece.line, CENTRE_LINE_M / 2, CENTRE_LINE_M / 2));
   }
+  let centreLines = unite(lineRings);
+  if (centreLines.length > 0) {
+    const gaps: Pair[][] = [];
+    for (const { point, visits } of nodes.values()) {
+      const streets = visits.filter((visit) => isStreet(pieces[visit.piece] as RoadPiece));
+      const arms = streets.reduce((sum, visit) => sum + (visit.isEnd ? 1 : 2), 0);
+      if (arms < 3) continue;
+      const widest = Math.max(...streets.map((visit) => half(pieces[visit.piece] as RoadPiece)));
+      gaps.push(disc(point, widest + JUNCTION_CLEAR_M));
+    }
+    if (gaps.length > 0) centreLines = cutAway(centreLines, unite(gaps));
+  }
+
+  return { roadways, driving, paths, curb, sidewalk, raised, centreLines };
+}
+
+/** Adds the flat parts of the streets (driving surfaces, paths, centre lines), cut to the tile. */
+export function addStreets(meshes: MeshSet, plan: StreetPlan, tile: Shape): void {
+  for (const { colour, shape } of plan.roadways)
+    addFlat(meshes, overlap(shape, tile), ROAD_Y, colour);
+  for (const { colour, shape } of plan.paths) addFlat(meshes, overlap(shape, tile), PATH_Y, colour);
+  addFlat(meshes, overlap(plan.centreLines, tile), MARKING_Y, CENTRE_LINE_COLOUR);
 }

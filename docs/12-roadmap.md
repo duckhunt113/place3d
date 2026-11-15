@@ -8,7 +8,23 @@ See [02-mvp.md](02-mvp.md) for the scope and [14-mvp-roadmap.md](14-mvp-roadmap.
 
 Coordinates in, a 300 m stylized area out, walking around it in first person. OpenStreetMap data, with Overture Maps buildings where it has none. Tags + rules only. Tile cache.
 
+**Status: built.** All six steps of the build plan are done.
+
 ## v0.2: World quality
+
+### Look pass (first, because it changes the feel the most)
+
+Comparing the game with a real street (Lorne Park Road) showed where the look falls short. In order of effect:
+
+1. **Trees.** Real streets here are walled in by tall trees; the game scatters a few small ones because none are mapped. Scatter many more and bigger trees, especially behind buildings; add richer tree models with level-of-detail; later place them from a canopy-height map.
+2. **Light.** The fill light tints walls olive-green from below. Fix the tint, add soft shading in corners and light grain on asphalt.
+3. **Fronts of buildings.** Kit pieces chosen by rule: garage doors on a car repair shop, a door and windows on a shop. (Needs the building kit below.)
+4. **Signs as a band** across the front of a shop, not one small board.
+5. **Forecourts.** Asphalt with yellow lines where shop land meets the road, instead of beige paving behind a raised sidewalk.
+
+What rules cannot know (how many garage bays, the siding, the real colours) needs street-level photos read by a vision model: see v0.4 and [06-decisions-and-ai.md](06-decisions-and-ai.md). Street View images must never be used for this; Mapillary's licence allows it.
+
+### The rest
 
 - Terrain from elevation.
 - Building kit pieces: storefront bays, windows, doors, pillars, awnings.
@@ -29,6 +45,10 @@ These were left out of the MVP on purpose. Each reuses existing pieces; none nee
 - **Hedges and tree rows** along mapped lines (the rules exist; they wait for the same "line" kind).
 - **Signs that face the right way.** Stop signs now stand on the right of the road's drawn direction; use the `direction` tag and the nearest junction to pick the correct side.
 - **Clouds, grass tufts and flower patches** from the art style.
+- **Solid curbs.** Curbs and sidewalks are drawn but the walking ground is flat. With terrain, the ground grid can carry them.
+- **Street finish.** Rounded corners at junctions, crosswalks and stop lines, a grass verge between curb and sidewalk.
+- **No doubled sidewalks.** Where OSM maps a sidewalk as its own path next to a road, skip the rule's sidewalk on that side.
+- **More than one row of signs** on tall walls, for shops on upper floors.
 
 ## v0.3: Multiplayer
 

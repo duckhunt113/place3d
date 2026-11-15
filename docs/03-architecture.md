@@ -9,7 +9,7 @@ somewhere/
       src/main.ts        wires ui, worker and render together
       src/ui/            coordinate input + map-link parser, status panel, map data credits
       src/worker/        Web Worker running @somewhere/world off the main thread
-      src/cache/         tile cache storage (IndexedDB)
+      src/cache/         tile cache storage (IndexedDB through idb-keyval)
       src/render/        the ONLY place that imports three.js (view, meshes, assets, instances, sky, lighting)
       src/physics/       Rapier world built from the world package's collider data
       src/player/        walking logic, keyboard + mouse input, the player's eyes
@@ -113,6 +113,7 @@ type RoadDecision = {
   sidewalks: "both" | "left" | "right" | "none";
   curbs: boolean;
   markings: "none" | "centre";
+  stalls: boolean; // a parking aisle: stalls are painted along both sides inside a parking lot
   surface: ColorName;
   rules: string[];
   source: DecisionSource;
@@ -122,14 +123,18 @@ type AreaDecision = {
   id: FeatureId;
   surface: ColorName;
   layer: number; // drawing order where areas overlap: 1 land use, 2 green, 3 hard or sandy, 4 water
+  markings: "none" | "stalls"; // "stalls": a parking lot, painted with stall lines
   scatter: { asset: AssetRequest; perM2: number }[]; // what seeded scatter plants on it
   rules: string[];
   source: DecisionSource;
 };
 type ObjectDecision = {
-  kind: "object"; // a mapped point that becomes a model: hydrant, stop sign, mapped tree
+  kind: "object"; // a mapped point that becomes a model: hydrant, stop sign, mapped tree, shop sign
   id: FeatureId;
+  place: "point" | "wall"; // at its own spot, or a name sign on the nearest building's front wall
   asset: AssetRequest;
+  text?: string; // what a sign says: the place's real name
+  colour?: ColorName; // a sign's face colour, picked from the rule's list, seeded by the feature id
   rules: string[];
   source: DecisionSource;
 };
@@ -141,7 +146,8 @@ type Placement = {
   pos: [number, number, number]; // local metres
   rotY: number;
   scale: number;
-  tint?: string;
+  tint?: ColorName; // colour of the model's text face (a sign's background)
+  text?: string; // words drawn on the model's text face (a shop's name)
 };
 
 type MeshData = {
@@ -246,10 +252,12 @@ type ExtraBuilding = {
 };
 type TileData = {
   id: TileId;
-  version: number; // tile format version (2: can carry `buildings`); pre-built paths use it (tiles/v2/...)
+  // Tile format version; pre-built paths use it (tiles/v3/...).
+  // 2: can carry `buildings`. 3: the data reaches TILE_MARGIN_M (30 m) past the tile's edges.
+  version: number;
   source: string; // "overpass" | "prebuilt": where the OSM data first came from (a saved file keeps it)
   fetchedAt: string;
-  elements: OsmElement[]; // OSM data; only the fields above are kept
+  elements: OsmElement[]; // OSM data touching the tile or its margin; only the fields above are kept
   // Gap-fill buildings that touch the tile. Whoever saved or built the tile already removed
   // every one that overlaps an OSM building (fillBuildingGaps), so OSM always wins.
   buildings?: ExtraBuilding[];
@@ -265,8 +273,8 @@ interface TileSource {
 //   FallbackTileSource  tries sources in order; moves on only when a tile is "not found"
 //                       (MVP: saved tiles first, then Overpass)
 //   PrebuiltTileSource  our pre-built tiles from object storage + CDN (launch)
-// One Overpass query text (overpassQuery) serves both the live source and `pnpm fixtures`,
-// so saved and live tiles always hold the same kinds of OSM things.
+// One Overpass query (tileQuery: the tile's box plus its margin) serves both the live source
+// and `pnpm fixtures`, so saved and live tiles always hold the same kinds of OSM things.
 // Overture is not a tile source of its own: it is files, read when a tile is saved or built.
 //   overtureBuildings(geojson)          Overture's download -> candidates (skips its copies of OSM buildings)
 //   fillBuildingGaps(candidates, osm)   keeps those that do not overlap an OSM building
@@ -278,11 +286,17 @@ type WorldTile = {
   id: TileId;
   version: number; // bump when parsing or the format changes
   generatedAt: string;
-  features: GeoFeature[];
-  // Outlines of neighbours' buildings that reach into this tile. Not built here; they only
-  // keep scattered trees and props out of those buildings.
-  blockers?: LatLon[][];
+  features: GeoFeature[]; // what belongs to this tile and is built here
+  // The tile's surroundings. Never built as such; they shape what is built, so that
+  // neighbouring tiles agree along their shared edge.
+  context?: {
+    buildings: Building[]; // neighbours' buildings that reach in (trees keep out; signs may hang on them)
+    roads: Road[]; // every road piece within the margin, the tile's own included, cut at the margin
+    points: Point[]; // neighbours' mapped points within the margin (shops that may want the same sign spot)
+  };
 };
+// A road piece also carries `offsetM`: metres along the whole mapped road to the piece's first
+// point. Joints and stalls are counted from it, so they continue evenly across tile edges.
 // Decisions are looked up by feature id (see Decision). Meshes, placements and
 // colliders are generated each time a tile loads and are never stored.
 
@@ -318,7 +332,7 @@ type TileMeshes = {
   id: TileId;
   key: string; // "17/x/y"
   meshes: MeshData[]; // one per palette colour; the renderer joins them into one mesh per tile
-  placements: Placement[]; // models: asset id, position, turn, size
+  placements: Placement[]; // models: asset id, position, turn, size; shop signs carry their name
   colliders: Collider[]; // solid shapes: buildings, tree trunks, props
   ground: GroundGrid; // the solid ground under the tile
   roads: RoadPath[]; // streets (not footpaths), for choosing where the player starts
@@ -327,6 +341,7 @@ type TileMeshes = {
     roads: number;
     areas: number;
     placements: number;
+    signs: number; // shop name signs (also counted in placements)
     triangles: number;
   };
 };
@@ -337,6 +352,22 @@ interface TileCache {
   get(id: TileId): Promise<WorldTile | undefined>;
   put(tile: WorldTile): Promise<void>;
 }
+
+// How a tile is found. Storage and network are passed in, so the world package has neither.
+//   1. `saved`: tiles that ship with the app (never cached: changing them shows at once)
+//   2. `cache`: used if it holds this tile in the current format (WORLD_TILE_VERSION) and it
+//      is not older than `maxAgeMs` (30 days)
+//   3. `source`: the network; the prepared tile is saved in the cache
+// If the network fails and an old cached tile exists, the old tile is used.
+// Two calls for the same tile at the same time share one request.
+declare function createTileLoader(options: {
+  saved?: TileSource;
+  source: TileSource;
+  cache?: TileCache;
+  now: () => string;
+  maxAgeMs?: number;
+  onCacheError?: (error: unknown) => void;
+}): { load(id: TileId): Promise<{ tile: WorldTile; from: "saved" | "cache" | "network" }> };
 ```
 
 ## Determinism
@@ -384,11 +415,41 @@ For each feature of the tile, `generator/tile.ts` asks the decide layer what it 
 - The same files are test fixtures (`fixtures/tiles.test.ts`). `fixtures/test-tile.json` is a separate hand-made tile for exact-value tests.
 - Scalable replacement: these files are the smallest version of "pre-built tiles in storage". At launch the loader points at object storage instead of the bundle; nothing else changes.
 
+## How an area loads (step 5)
+
+1. `main.ts` asks the worker for every tile within 300 m of the entered point (`loadArea`).
+2. The worker finds each tile through `createTileLoader` (above), two at a time, builds it, and hands it to the page with where it came from: `saved`, `cache` or `network`.
+3. The page adds the tile to the view and the physics, and the loading card's bar moves on one step.
+4. **A tile that fails** arrives as plain ground with `from: "failed"`, so there is never a hole to fall through. The worker tries it again after 5, 20 and 60 seconds, also after the player has started walking; a tile that then succeeds replaces the plain ground.
+5. When the first pass is over, the player is placed on the nearest street and may walk wherever a tile is loaded (`player/area.ts`).
+6. The status line says what was built and where the tiles came from, for example "8 fetched from the map server, 6 from this device's cache".
+
+Storage: `apps/web/src/cache/tiles.ts` keeps tiles in IndexedDB under keys like `v4/17/36550/47896`. The version in the key is `WORLD_TILE_VERSION`, so tiles in an older format are never read back, and they are deleted when the game starts. To empty the cache by hand: browser DevTools, Application, IndexedDB, delete the `somewhere` database.
+
+## How streets, parking and signs are built (step 4)
+
+All three work on **flat shapes** (outlines with holes) and the three ways of combining them: join, cut away, overlap (`util/shapes.ts`).
+
+1. **Road pieces.** `buildTile` takes every road piece in the tile's `context` (the tile plus a 30 m margin), with its decision.
+2. **Street plan** (`generator/roads.ts`, `planStreets`):
+   - every road line is thickened into a ribbon and all ribbons are joined into one **driving surface**, so junctions have no overlaps
+   - the same lines, thickened by 0.3 m more, give the **curb**; by a further 1.5 m on the sides that have one, the **sidewalk**; the driving surface is cut out of both, so a side street or a driveway opens the curb by itself
+   - a dead end is round; where roads meet, an end is only as round as the narrowest road there
+   - **footpaths** stop at the sidewalk and the road
+   - **centre lines** are thin ribbons, with a gap where three or more street arms meet.
+3. **Cut to the tile.** Each shape is overlapped with the tile's rectangle and triangulated: roads at 3 cm, paths at 5 cm, paint just above the road.
+4. **Sidewalks** (`generator/sidewalks.ts`): curb and sidewalk tops at 15 cm, little walls around them (none on the tile's edge), and a joint line across the sidewalk every 2 m.
+5. **Parking** (`generator/parking.ts`): a line every 2.7 m along both sides of each parking aisle, 5.2 m long, kept inside the lot and off the driving surface. Where two aisles' stalls would cross, the aisle with the smaller id keeps its stalls. A lot with no mapped aisle gets rows along its long sides.
+6. **Signs** (`generator/signs.ts`): each named shop (a rule decides which points count) finds its building, then the wall that faces a parking lot or a street nearest to it, and takes that wall's bay. The result is an ordinary `Placement` of the blank board model, plus `text` and `tint`.
+7. **Names** (`apps/web/src/render/signs.ts`): all names of a tile are drawn into one picture (our own lettering, white or dark on the board colour) and laid over the boards' faces as one mesh: one extra draw call per tile.
+
 ## Known limits of the first pass (and where they get fixed)
 
 - **Relations:** the Overpass query fetches multipolygon relations for buildings only. Big relations (lakes, forests) can be huge, so they wait for clipped fetching in roadmap item 2.2.
 - **Lines that place things** (`barrier=hedge`, `natural=tree_row`) are fetched but not parsed yet; roadmap item 2.5.
-- **Road joins** are simple overlaps with round ends; clean intersections come with curbs and sidewalks (roadmap step 4).
+- **Curbs are not solid yet.** Curbs and sidewalks are drawn 15 cm high, but the ground you walk on is still flat, so the player's feet pass through them. Solid curbs belong with terrain (v0.2).
+- **Sidewalks may double up.** Where OSM maps a sidewalk as its own footway and the road has no `sidewalk` tag, both the mapped path and the rule's sidewalk are drawn.
+- **Road corners are sharp**, not rounded, at junctions.
 - **Pitched roofs** only fit near-rectangular outlines; others are flat until the straight-skeleton roofs of v0.2.
 - **Streams and railway tracks** are not fetched or drawn; they are later extras (see [12-roadmap.md](12-roadmap.md)).
 - **Sign direction** is a guess (the right-hand side of the road's drawn direction).

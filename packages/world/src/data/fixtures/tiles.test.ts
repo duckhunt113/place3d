@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import realCatalog from "../../../../../apps/web/public/assets/catalog.json";
+import { AssetSelector } from "../../assets/select.ts";
 import { createRuleEngine } from "../../decide/rules/index.ts";
 import { findSpawn } from "../../generator/spawn.ts";
 import { buildTile } from "../../generator/tile.ts";
-import type { Collider, RoadPath } from "../../types.ts";
+import type { AssetCatalog, Collider, RoadPath } from "../../types.ts";
 import { prepareTile } from "../prepare.ts";
 import { project, regionFor } from "../project.ts";
 import { TILE_FORMAT_VERSION } from "../sources/overpass.ts";
@@ -27,10 +29,9 @@ describe("saved tiles", () => {
     for (const key of fixtureTileKeys) {
       const data = await loadFixtureTile(key);
       expect(data?.id).toEqual(parseTileKey(key));
-      expect(
-        data?.version,
-        "the saved tiles are in an older format: run `pnpm fixtures --buildings-only`",
-      ).toBe(TILE_FORMAT_VERSION);
+      expect(data?.version, "the saved tiles are in an older format: run `pnpm fixtures`").toBe(
+        TILE_FORMAT_VERSION,
+      );
       expect(Array.isArray(data?.elements)).toBe(true);
     }
     expect(await loadFixtureTile("17/0/0")).toBeUndefined();
@@ -53,6 +54,37 @@ describe("saved tiles", () => {
     }
     expect(roads).toBeGreaterThan(0);
     expect(buildings).toBeGreaterThan(0);
+  });
+
+  it("build streets with curbs, sidewalks, parking stalls and shop signs", async () => {
+    if (!FIXTURE_CENTRE) throw new Error("no saved tiles yet: run `pnpm fixtures`");
+    const region = regionFor(FIXTURE_CENTRE);
+    const engine = createRuleEngine();
+    const selector = new AssetSelector(realCatalog as unknown as AssetCatalog);
+    const triangles: Record<string, number> = {};
+    const names: string[] = [];
+    for (const key of fixtureTileKeys) {
+      const data = await loadFixtureTile(key);
+      if (!data) throw new Error(`saved tile ${key} did not load`);
+      const built = buildTile(prepareTile(data, data.fetchedAt), region, engine, selector);
+      for (const mesh of built.meshes) {
+        triangles[mesh.material] = (triangles[mesh.material] ?? 0) + mesh.indices.length / 3;
+      }
+      for (const placement of built.placements) if (placement.text) names.push(placement.text);
+    }
+    for (const colour of [
+      "asphalt",
+      "curb",
+      "sidewalk",
+      "sidewalk.joint",
+      "road.white",
+      "road.yellow",
+    ]) {
+      expect(triangles[colour], `no ${colour} was drawn`).toBeGreaterThan(0);
+    }
+    // Every shop sign says something, and no name hangs twice in the same tile set by mistake.
+    expect(names.length).toBeGreaterThan(0);
+    for (const name of names) expect(name.trim().length).toBeGreaterThan(0);
   });
 
   it("give the player a street to start on, close to the centre and clear of buildings", async () => {

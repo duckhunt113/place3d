@@ -1,7 +1,7 @@
 {
-  "version": 1,
+  "version": 2,
   "domain": "roads",
-  "note": "OSM tag rules for roads and paths. Width = widthM tag, else lanes x laneWidthM. kind \"none\" = not drawn.",
+  "note": "OSM tag rules for roads and paths. Width = widthM tag, else lanes x laneWidthM. kind \"none\" = not drawn. stalls = parking stalls are painted along both sides inside a parking lot.",
   "rules": [
     {
       "id": "road.any",
@@ -92,7 +92,8 @@
         "sidewalks": "none",
         "curbs": false,
         "markings": "none",
-        "surface": "asphalt"
+        "surface": "asphalt",
+        "stalls": true
       }
     },
     {

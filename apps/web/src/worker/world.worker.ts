@@ -6,44 +6,73 @@ import {
   AssetSelector,
   buildTile,
   createRuleEngine,
-  FallbackTileSource,
+  createTileLoader,
   FileTileSource,
   type LatLon,
   loadFixtureTile,
   OverpassTileSource,
-  prepareTile,
+  type Region,
   regionFor,
   type TileId,
   type TileMeshes,
+  type TileOrigin,
   tileKey,
   tilesInRadius,
+  WORLD_TILE_VERSION,
+  type WorldTile,
 } from "@somewhere/world";
 import { expose, transfer } from "comlink";
+import { browserStore, createTileCache } from "../cache/tiles.ts";
 
-export type TileResult =
-  | { key: string; ok: true; tile: TileMeshes }
-  | { key: string; ok: false; error: string };
+export type TileResult = {
+  key: string;
+  /** The built tile. For a tile that could not be loaded: plain ground, so nobody falls through. */
+  tile: TileMeshes;
+  /** Where the tile's map data came from, or "failed" if it could not be loaded. */
+  from: TileOrigin | "failed";
+  /** Why it failed. */
+  error?: string;
+  /** True if a failed tile will be tried again by itself; false once it has been given up on. */
+  retrying?: boolean;
+};
 
 export type AreaSummary = {
   tiles: number;
-  failed: number;
-  buildings: number;
-  roads: number;
-  /** Models placed: trees, bushes and props. */
-  placements: number;
-  triangles: number;
   /** False if a newer request replaced this one before it finished. */
   finished: boolean;
 };
 
 /** How many tiles are fetched at once. Kept low to be fair to the public map server. */
 const PARALLEL = 2;
+/** A tile that failed is tried again after these waits (seconds), then given up on. */
+const RETRY_AFTER_S = [5, 20, 60];
 
-// Saved tiles first (no network needed), then the live map for anywhere else.
-const source = new FallbackTileSource([
-  new FileTileSource(loadFixtureTile),
-  new OverpassTileSource({ now: () => new Date().toISOString() }),
-]);
+const now = (): string => new Date().toISOString();
+const cache = createTileCache(browserStore(), WORLD_TILE_VERSION);
+// Tidy up tiles saved by older versions of the game. Nothing waits for this.
+cache.prune().catch(() => {});
+let cacheWarned = false;
+
+// Tiles that ship with the app first (no network), then this device's cache, then the live map.
+// VITE_OVERPASS_URL points the game at another Overpass server (see docs/05-data-sources.md).
+const overpassUrl: unknown = import.meta.env.VITE_OVERPASS_URL;
+const loader = createTileLoader({
+  saved: new FileTileSource(loadFixtureTile),
+  source: new OverpassTileSource(
+    typeof overpassUrl === "string" && overpassUrl !== ""
+      ? { now, endpoint: overpassUrl }
+      : { now },
+  ),
+  cache,
+  now,
+  onCacheError(error) {
+    if (cacheWarned) return;
+    cacheWarned = true;
+    console.warn(
+      `The tile cache is not available; tiles will be fetched every time: ${String(error)}`,
+    );
+  },
+});
 const engine = createRuleEngine();
 let latestRequest = 0;
 
@@ -62,28 +91,60 @@ const selector: Promise<AssetSelector | undefined> = fetch(
     return undefined;
   });
 
+/** Hands the big number arrays over to the main thread instead of copying them. */
+function send(result: TileResult): TileResult {
+  const buffers = [
+    ...result.tile.meshes.flatMap((m) => [
+      m.positions.buffer,
+      m.normals.buffer,
+      m.uvs.buffer,
+      m.indices.buffer,
+    ]),
+    result.tile.ground.heights.buffer,
+  ];
+  return transfer(result, buffers);
+}
+
+/** Loads and builds one tile; on failure, plain ground in its place. */
+async function buildOne(id: TileId, region: Region, retrying: boolean): Promise<TileResult> {
+  const key = tileKey(id);
+  try {
+    const loaded = await loader.load(id);
+    return { key, tile: buildTile(loaded.tile, region, engine, await selector), from: loaded.from };
+  } catch (error) {
+    const empty: WorldTile = { id, version: WORLD_TILE_VERSION, generatedAt: now(), features: [] };
+    return {
+      key,
+      tile: buildTile(empty, region, engine),
+      from: "failed",
+      error: error instanceof Error ? error.message : String(error),
+      retrying,
+    };
+  }
+}
+
+const wait = (seconds: number) => new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+
 const api = {
   /**
    * Fetches and builds every tile within `radiusM` of `centre`, reporting each one as it is
-   * ready. Starting a new request makes any older one stop after its current tiles.
+   * ready. Tiles that fail are shown as plain ground and tried again in the background, also
+   * after this call has returned; each later result arrives through `onTile` too. `onStart`
+   * is told how many tiles there are before the first arrives. Starting a new request makes
+   * any older one stop after its current tiles.
    */
   async loadArea(
     centre: LatLon,
     radiusM: number,
     onTile: (result: TileResult) => void | Promise<void>,
+    onStart: (tiles: number) => void | Promise<void>,
   ): Promise<AreaSummary> {
     const request = ++latestRequest;
     const region = regionFor(centre);
     const queue: TileId[] = tilesInRadius(centre, radiusM);
-    const summary: AreaSummary = {
-      tiles: queue.length,
-      failed: 0,
-      buildings: 0,
-      roads: 0,
-      placements: 0,
-      triangles: 0,
-      finished: true,
-    };
+    const summary: AreaSummary = { tiles: queue.length, finished: true };
+    await onStart(queue.length);
+    let failed: TileId[] = [];
 
     const work = async (): Promise<void> => {
       for (let id = queue.shift(); id; id = queue.shift()) {
@@ -91,41 +152,30 @@ const api = {
           summary.finished = false;
           return;
         }
-        const key = tileKey(id);
-        try {
-          const data = await source.getTile(id);
-          const tile = buildTile(
-            prepareTile(data, new Date().toISOString()),
-            region,
-            engine,
-            await selector,
-          );
-          summary.buildings += tile.counts.buildings;
-          summary.roads += tile.counts.roads;
-          summary.placements += tile.counts.placements;
-          summary.triangles += tile.counts.triangles;
-          // Hand the big number arrays over instead of copying them.
-          const buffers = [
-            ...tile.meshes.flatMap((m) => [
-              m.positions.buffer,
-              m.normals.buffer,
-              m.uvs.buffer,
-              m.indices.buffer,
-            ]),
-            tile.ground.heights.buffer,
-          ];
-          await onTile(transfer({ key, ok: true, tile }, buffers));
-        } catch (error) {
-          summary.failed++;
-          await onTile({
-            key,
-            ok: false,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
+        const result = await buildOne(id, region, true);
+        if (result.from === "failed") failed.push(id);
+        await onTile(send(result));
       }
     };
     await Promise.all(Array.from({ length: PARALLEL }, work));
+
+    const retry = async (): Promise<void> => {
+      for (const [round, seconds] of RETRY_AFTER_S.entries()) {
+        if (failed.length === 0) return;
+        await wait(seconds);
+        const last = round === RETRY_AFTER_S.length - 1;
+        const still: TileId[] = [];
+        for (const id of failed) {
+          if (request !== latestRequest) return;
+          const result = await buildOne(id, region, !last);
+          if (result.from === "failed") still.push(id);
+          // A tile that failed again only needs reporting once it is given up on.
+          if (result.from !== "failed" || last) await onTile(send(result));
+        }
+        failed = still;
+      }
+    };
+    if (summary.finished && failed.length > 0) void retry();
     return summary;
   },
 };

@@ -57,6 +57,9 @@ building:levels=<n>                   -> storeys = n                  (real tag,
 highway=residential                   -> 2 lanes x 3.5 m, curbs, sidewalks both sides
 lanes=<n> / width=<m>                 -> copied from the tag          (priority 100)
 amenity=parking                       -> asphalt surface, painted stalls
+service=parking_aisle                 -> stalls along both sides of the aisle
+shop=* + name=*                       -> a name sign on the building's front wall
+amenity=restaurant|cafe|... + name=*  -> the same (places people walk into)
 leisure=park                          -> grass + seeded trees and benches (asset requests)
 natural=tree                          -> tree request: leafType/genus from tags, height from tag
 barrier=hedge                         -> hedge segments every 2 m along the line

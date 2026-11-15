@@ -3,6 +3,8 @@
 
 import earcut from "earcut";
 import type { ColorName, Vec2 } from "../types.ts";
+import { type Pair, signedArea } from "../util/geometry.ts";
+import type { Shape } from "../util/shapes.ts";
 import type { MeshSet, Vec3 } from "./mesh.ts";
 
 const UP: Vec3 = [0, 1, 0];
@@ -29,14 +31,14 @@ export function addGround(
 }
 
 /**
- * Adds one area in its real shape, with any holes cut out, on the given layer.
+ * Adds one flat outline with holes cut out, at height `y`.
  * Returns its area in square metres (0 if the shape was not usable).
  */
-export function addArea(
+function addFlatPolygon(
   meshes: MeshSet,
   outline: readonly Vec2[],
   holes: readonly (readonly Vec2[])[],
-  layer: number,
+  y: number,
   colour: ColorName,
 ): number {
   if (outline.length < 3) return 0;
@@ -48,7 +50,6 @@ export function addArea(
     points.push(...hole);
   }
   const corners = earcut(points.flat(), holeStarts);
-  const y = layer * LAYER_STEP_M;
   const mesh = meshes.get(colour);
   let area = 0;
   for (let i = 0; i + 2 < corners.length; i += 3) {
@@ -61,4 +62,72 @@ export function addArea(
     area += Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])) / 2;
   }
   return area;
+}
+
+/**
+ * Adds one area in its real shape, with any holes cut out, on the given layer.
+ * Returns its area in square metres (0 if the shape was not usable).
+ */
+export function addArea(
+  meshes: MeshSet,
+  outline: readonly Vec2[],
+  holes: readonly (readonly Vec2[])[],
+  layer: number,
+  colour: ColorName,
+): number {
+  return addFlatPolygon(meshes, outline, holes, layer * LAYER_STEP_M, colour);
+}
+
+/** Adds a flat shape (any number of pieces, with holes) at height `y`. Returns its area. */
+export function addFlat(meshes: MeshSet, shape: Shape, y: number, colour: ColorName): number {
+  let area = 0;
+  for (const [outline, ...holes] of shape) {
+    if (outline) area += addFlatPolygon(meshes, outline, holes, y, colour);
+  }
+  return area;
+}
+
+/**
+ * Adds upright walls along every edge of a shape, from `bottom` up to `top`, facing away
+ * from the shape. Edges for which `skip` says yes get no wall (edges on a tile's border).
+ */
+export function addWalls(
+  meshes: MeshSet,
+  shape: Shape,
+  bottom: number,
+  top: number,
+  colour: ColorName,
+  skip: (a: Vec2, b: Vec2) => boolean = () => false,
+): void {
+  const mesh = meshes.get(colour);
+  for (const [outline, ...holes] of shape) {
+    if (!outline) continue;
+    // The solid part lies inside the outline and outside the holes: "away" flips for holes.
+    const rings: [readonly Vec2[], boolean][] = [[outline, false]];
+    for (const hole of holes) rings.push([hole, true]);
+    for (const [ring, isHole] of rings) {
+      const clockwise = signedArea(ring as Pair[]) < 0;
+      const flip = clockwise !== isHole ? -1 : 1;
+      for (let i = 0; i < ring.length; i++) {
+        const a = ring[i] as Vec2;
+        const b = ring[(i + 1) % ring.length] as Vec2;
+        const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        if (length < 1e-6 || skip(a, b)) continue;
+        const normal: Vec3 = [(flip * (b[1] - a[1])) / length, 0, (flip * -(b[0] - a[0])) / length];
+        mesh.addQuad(
+          [a[0], bottom, a[1]],
+          [b[0], bottom, b[1]],
+          [b[0], top, b[1]],
+          [a[0], top, a[1]],
+          normal,
+          [
+            [0, 0],
+            [length, 0],
+            [length, top - bottom],
+            [0, top - bottom],
+          ],
+        );
+      }
+    }
+  }
 }

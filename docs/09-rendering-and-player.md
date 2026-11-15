@@ -60,7 +60,7 @@ Bigger areas later: stream tiles as the player walks and unload those behind (Ho
   - Shift to run, Space to jump
   - F, or the button in the panel, switches to the **free view** and back.
 - Speeds: walking 4 m/s, running 8 m/s, a jump of about 0.9 m. A real walk is about 1.4 m/s; games walk faster so a street does not feel endless. All of these are the `PLAYER` settings in `player/walker.ts`.
-- Rapier's character controller moves the capsule: it slides along walls, climbs steps up to 0.3 m (curbs, step 4) and stays on the ground on slopes.
+- Rapier's character controller moves the capsule: it slides along walls, climbs steps up to 0.3 m and stays on the ground on slopes. (Curbs are drawn but not solid yet: the walking ground is still flat.)
 - First person makes these matter more:
   - **Scale**: real metres everywhere (see reference sizes in [07-assets.md](07-assets.md)).
   - **Close-up surfaces**: textured or colour-varied asphalt, grass and sidewalk.
@@ -95,6 +95,26 @@ Why the ground is a grid and not one big flat slab: a slab several kilometres wi
 
 Not done yet, by choice: clouds, grass tufts and flower details, level-of-detail for far trees.
 
+## Performance, measured (step 6)
+
+Next to the FPS counter the game shows how many draw calls and triangles each frame uses, the shadow pass included. On the Albertson Crescent area (14 tiles, 319 buildings, about 1,840 models):
+
+| View                  | Draw calls | Triangles | Budget (desktop)    |
+| --------------------- | ---------- | --------- | ------------------- |
+| Walking               | about 120  | 0.85 M    | under 200, 1 to 2 M |
+| Free view, whole area | about 190  | 1.15 M    | under 200, 1 to 2 M |
+
+- One shadow-casting light; pixel ratio capped at 2.
+- Most triangles are tree models. Level-of-detail for far trees is the first thing to add when areas grow.
+- The mobile budgets (100 draw calls, 300 to 500 thousand triangles) are **not** met; mobile is not in the MVP.
+
+## Street details and signs (step 4)
+
+- **Streets, curbs, sidewalks, markings and parking stalls** are ordinary generated geometry: they arrive in the tile's one mesh and cost no extra draw calls. On the Albertson Crescent area they add about 14,000 triangles.
+- **Shop signs** are the blank board model (instanced like any model) plus the name. `render/signs.ts` draws every name of a tile into one canvas picture, 768 by 128 pixels per name, and lays one flat piece over each board's face: **one extra draw call per tile that has signs**. The board's face is found in the model itself (the `sign:face` material), so a new board model needs no code.
+- **Lettering:** Fredoka (bundled, weight 600), white on coloured boards and dark on cream. A name is written on one line if it fits, shrunk a little if needed, split in two lines if not, and cut short with "…" as a last resort (`render/sign-text.ts`, tested).
+- **Sharpness:** the sign picture uses the best texture filtering the machine offers (anisotropy), so names stay readable at an angle.
+
 ## How walking works (step 3)
 
 1. **Collider data** (`packages/world/src/generator/colliders.ts`): each built tile carries its solid shapes and its ground grid as plain numbers, next to its meshes.
@@ -102,4 +122,5 @@ Not done yet, by choice: clouds, grass tufts and flower details, level-of-detail
 3. **Walker** (`player/walker.ts`): turns "forwards, run, jump, facing this way" into a position. Fixed 1/60 s steps, its own gravity, kept inside the loaded circle. No keyboard and no camera in it, so it has tests.
 4. **Input** (`player/input.ts`): keyboard and mouse. **Player** (`player/player.ts`): ties input and walker together and gives the camera its eye position. If the player ever falls off the world they return to the start.
 5. **Spawn** (`generator/spawn.ts`): the player starts on the street nearest to the entered coordinates, looking along it. A street is always clear ground.
-6. **Two views** (`render/view.ts`): the player's eyes, and the free view, which starts behind and above the player. While an area loads you watch it fill in from above; walking starts when every tile is there.
+6. **Two views** (`render/view.ts`): the player's eyes, and the free view, which starts behind and above the player. While an area loads you watch it fill in from above, with a loading card counting tiles; walking starts when every tile has arrived (a tile that failed arrives as plain ground).
+7. **Where you can walk** (`player/area.ts`): anywhere a tile is loaded. At the edge of the loaded tiles the player slides along it.

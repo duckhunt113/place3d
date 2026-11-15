@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import testTile from "../data/fixtures/test-tile.json" with { type: "json" };
 import { parseElements, parseTile } from "../data/parse.ts";
 import type { GeoFeature, LatLon, TileData } from "../types.ts";
-import { decideArea, decideBuilding, decideRoad, toAssetRequest } from "./decisions.ts";
+import {
+  decideArea,
+  decideBuilding,
+  decideObject,
+  decideRoad,
+  toAssetRequest,
+} from "./decisions.ts";
 import { FactFinder, rectangularity, ringAreaM2 } from "./facts.ts";
 import { createRuleEngine } from "./rules/index.ts";
 
@@ -80,11 +86,12 @@ describe("decideBuilding with the project rules", () => {
     });
   });
 
-  it("makes a retail building a 1-storey shop with signs, and credits the real tag", () => {
+  it("makes a retail building a tall 1-storey shop with signs, and credits the real tag", () => {
     expect(decide("way/2003")).toMatchObject({
       type: "retail",
       storeys: 1,
-      heightM: 3,
+      // Shops are taller than a storey of a house: room for the sign band above the doors.
+      heightM: 4.5,
       shopSigns: true,
       source: "osm",
     });
@@ -338,6 +345,11 @@ describe("decideArea", () => {
     expect(decideArea(engine, area({ landuse: "railway" }))).toBeUndefined();
   });
 
+  it("marks parking lots for stall lines, and nothing else", () => {
+    expect(decideArea(engine, area({ amenity: "parking" }))?.markings).toBe("stalls");
+    expect(decideArea(engine, area({ leisure: "park" }))?.markings).toBe("none");
+  });
+
   it("reads asset requests safely", () => {
     expect(
       toAssetRequest({ category: "tree", want: { genus: "Acer", size: 2, odd: null } }),
@@ -347,5 +359,76 @@ describe("decideArea", () => {
     });
     expect(toAssetRequest({ want: {} })).toBeUndefined();
     expect(toAssetRequest("tree")).toBeUndefined();
+  });
+});
+
+describe("decideRoad: parking aisles", () => {
+  const road = (tags: Record<string, string>): Extract<GeoFeature, { kind: "road" }> => ({
+    kind: "road",
+    id: "way/7",
+    line: [],
+    tags,
+  });
+
+  it("paints stalls along parking aisles only", () => {
+    const aisle = decideRoad(engine, road({ highway: "service", service: "parking_aisle" }));
+    expect(aisle).toMatchObject({ kind: "road", stalls: true, curbs: false, widthM: 6 });
+    expect(decideRoad(engine, road({ highway: "service" }))?.stalls).toBe(false);
+    expect(decideRoad(engine, road({ highway: "residential" }))?.stalls).toBe(false);
+  });
+});
+
+describe("decideObject", () => {
+  const point = (id: number, tags: Record<string, string>) => ({ id: `node/${id}` as const, tags });
+
+  it("stands mapped things at their own spot", () => {
+    expect(decideObject(engine, point(1, { emergency: "fire_hydrant" }))).toMatchObject({
+      kind: "object",
+      id: "node/1",
+      place: "point",
+      asset: { category: "prop.hydrant" },
+    });
+  });
+
+  it("hangs a name sign on the wall for a named shop, in a colour of its own", () => {
+    const sign = decideObject(engine, point(2, { shop: "bakery", name: "Test Bakery" }));
+    expect(sign).toMatchObject({
+      place: "wall",
+      asset: { category: "sign.shop" },
+      text: "Test Bakery",
+    });
+    expect(["sign.red", "sign.green", "sign.teal", "sign.navy", "sign.orange", "cream"]).toContain(
+      sign?.colour,
+    );
+    // The same shop always gets the same colour.
+    expect(decideObject(engine, point(2, { shop: "bakery", name: "Test Bakery" }))).toEqual(sign);
+  });
+
+  it("gives named places you walk into a sign too, but not benches or car parks", () => {
+    const named = (amenity: string) => decideObject(engine, point(3, { amenity, name: "A Name" }));
+    expect(named("restaurant")?.place).toBe("wall");
+    expect(named("pharmacy")?.place).toBe("wall");
+    expect(named("parking")).toBeUndefined();
+    expect(named("clothing_donation")).toBeUndefined();
+    expect(decideObject(engine, point(4, { amenity: "bench", name: "A Name" }))?.place).toBe(
+      "point",
+    );
+  });
+
+  it("makes no sign without a name", () => {
+    expect(decideObject(engine, point(5, { shop: "convenience" }))).toBeUndefined();
+    expect(decideObject(engine, point(5, { shop: "convenience", name: "   " }))).toBeUndefined();
+  });
+
+  it("tidies the name and cuts a very long one short", () => {
+    const tidy = decideObject(engine, point(6, { shop: "gift", name: "  Two   Spaces  " }));
+    expect(tidy?.text).toBe("Two Spaces");
+    const long = decideObject(engine, point(7, { shop: "gift", name: "Shop ".repeat(20) }));
+    expect(long?.text?.length).toBeLessThanOrEqual(48);
+    expect(long?.text?.endsWith("…")).toBe(true);
+  });
+
+  it("is undefined for points no rule covers", () => {
+    expect(decideObject(engine, point(8, { tourism: "information" }))).toBeUndefined();
   });
 });

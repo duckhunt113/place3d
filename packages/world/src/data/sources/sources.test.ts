@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TileData, TileId, TileSource } from "../../types.ts";
 import testTile from "../fixtures/test-tile.json" with { type: "json" };
-import { tileBounds } from "../tiles.ts";
+import { tileBounds, tileReach } from "../tiles.ts";
 import { FallbackTileSource, FileTileSource, TileNotFoundError } from "./file.ts";
 import {
   OverpassError,
@@ -9,6 +9,7 @@ import {
   overpassQuery,
   TILE_FORMAT_VERSION,
   tileDataFromOverpass,
+  tileQuery,
 } from "./overpass.ts";
 import { overtureBuildings } from "./overture.ts";
 
@@ -155,9 +156,10 @@ describe("OverpassTileSource", () => {
     if (!call?.init) throw new Error("fetch was not called with options");
     expect(call.url).toBe("https://overpass-api.de/api/interpreter");
     expect(call.init.method).toBe("POST");
-    expect(decodeURIComponent(String(call.init.body))).toBe(
-      `data=${overpassQuery(tileBounds(TILE))}`,
-    );
+    // The query covers the tile and the margin around it.
+    expect(decodeURIComponent(String(call.init.body))).toBe(`data=${tileQuery(TILE)}`);
+    expect(tileQuery(TILE)).toBe(overpassQuery(tileReach(TILE)));
+    expect(tileQuery(TILE)).not.toBe(overpassQuery(tileBounds(TILE)));
     expect((call.init.headers as Record<string, string>)["User-Agent"]).toBe("test-agent");
   });
 

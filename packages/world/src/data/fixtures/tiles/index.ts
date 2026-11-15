@@ -7,19 +7,19 @@ import type { LatLon, TileData } from "../../../types.ts";
 export const FIXTURE_CENTRE: LatLon | undefined = { lat: 43.530516, lon: -79.611936 };
 
 const loaders: Record<string, () => Promise<unknown>> = {
-  "17/36548/47896": () => import("./17-36548-47896.json").then((m) => m.default),
-  "17/36548/47897": () => import("./17-36548-47897.json").then((m) => m.default),
   "17/36549/47895": () => import("./17-36549-47895.json").then((m) => m.default),
-  "17/36549/47896": () => import("./17-36549-47896.json").then((m) => m.default),
-  "17/36549/47897": () => import("./17-36549-47897.json").then((m) => m.default),
-  "17/36549/47898": () => import("./17-36549-47898.json").then((m) => m.default),
   "17/36550/47895": () => import("./17-36550-47895.json").then((m) => m.default),
-  "17/36550/47896": () => import("./17-36550-47896.json").then((m) => m.default),
-  "17/36550/47897": () => import("./17-36550-47897.json").then((m) => m.default),
-  "17/36550/47898": () => import("./17-36550-47898.json").then((m) => m.default),
   "17/36551/47895": () => import("./17-36551-47895.json").then((m) => m.default),
+  "17/36548/47896": () => import("./17-36548-47896.json").then((m) => m.default),
+  "17/36549/47896": () => import("./17-36549-47896.json").then((m) => m.default),
+  "17/36550/47896": () => import("./17-36550-47896.json").then((m) => m.default),
   "17/36551/47896": () => import("./17-36551-47896.json").then((m) => m.default),
+  "17/36548/47897": () => import("./17-36548-47897.json").then((m) => m.default),
+  "17/36549/47897": () => import("./17-36549-47897.json").then((m) => m.default),
+  "17/36550/47897": () => import("./17-36550-47897.json").then((m) => m.default),
   "17/36551/47897": () => import("./17-36551-47897.json").then((m) => m.default),
+  "17/36549/47898": () => import("./17-36549-47898.json").then((m) => m.default),
+  "17/36550/47898": () => import("./17-36550-47898.json").then((m) => m.default),
   "17/36551/47898": () => import("./17-36551-47898.json").then((m) => m.default),
 };
 

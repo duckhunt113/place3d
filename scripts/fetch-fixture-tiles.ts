@@ -16,7 +16,9 @@
 //         pnpm fixtures --dry-run                    show what would be fetched, fetch nothing
 //
 // It uses the same tile grid, Overpass query and gap-filling code as the game, so saved tiles
-// and built tiles always have the same shape. Be kind to the public servers: run this rarely.
+// and built tiles always have the same shape. Each tile's data reaches a little past its
+// edges (the tile margin), so curbs and sidewalks line up between tiles.
+// Be kind to the public servers: run this rarely.
 
 import { spawnSync } from "node:child_process";
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -26,10 +28,10 @@ import { buildingsTouching, fillBuildingGaps } from "../packages/world/src/data/
 import { parseElements } from "../packages/world/src/data/parse.ts";
 import {
   OVERPASS_ENDPOINT,
-  overpassQuery,
   runOverpassQuery,
   TILE_FORMAT_VERSION,
   tileDataFromOverpass,
+  tileQuery,
 } from "../packages/world/src/data/sources/overpass.ts";
 import { overtureBuildings } from "../packages/world/src/data/sources/overture.ts";
 import {
@@ -202,17 +204,24 @@ function readSaved(): { centre: LatLon; tiles: TileData[] } {
     .filter((file) => file.endsWith(".json"))
     .sort();
   if (!match || files.length === 0) throw new Error(none);
-  return {
-    centre: { lat: Number(match[1]), lon: Number(match[2]) },
-    tiles: files.map((file) => JSON.parse(readFileSync(join(OUT_DIR, file), "utf8")) as TileData),
-  };
+  const tiles = files.map(
+    (file) => JSON.parse(readFileSync(join(OUT_DIR, file), "utf8")) as TileData,
+  );
+  if (tiles.some((tile) => tile.version !== TILE_FORMAT_VERSION)) {
+    throw new Error(
+      "The saved tiles are in an older format, so their map data has to be fetched again. " +
+        "Run `pnpm fixtures` without --buildings-only.",
+    );
+  }
+  return { centre: { lat: Number(match[1]), lon: Number(match[2]) }, tiles };
 }
 
 /** Fetches the OSM data of every tile around the centre from Overpass. */
 async function fetchOsm(centre: LatLon): Promise<TileData[]> {
   const fetched: TileData[] = [];
   for (const id of tilesInRadius(centre, radius)) {
-    const json = await ask(overpassQuery(tileBounds(id)));
+    // Each tile's data reaches a little past its edges (the tile margin), like the game's own query.
+    const json = await ask(tileQuery(id));
     const data = tileDataFromOverpass(id, json, now());
     console.log(`  ${tileKey(id)}: ${data.elements.length} elements`);
     fetched.push(data);
@@ -246,7 +255,7 @@ async function main(): Promise<void> {
   if (dryRun) {
     for (const id of ids) console.log(`  ${tileKey(id)}`);
     const first = ids[0] as (typeof ids)[number];
-    console.log(`\nOverpass query for the first tile:\n${overpassQuery(tileBounds(first))}`);
+    console.log(`\nOverpass query for the first tile:\n${tileQuery(first)}`);
     if (useOverture) {
       console.log(`\nOverture: uvx overturemaps ${overtureArgs(area, "<file>").join(" ")}`);
     }

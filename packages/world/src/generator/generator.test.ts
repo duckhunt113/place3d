@@ -6,18 +6,12 @@ import { prepareTile } from "../data/prepare.ts";
 import { project, regionFor } from "../data/project.ts";
 import { tileBounds } from "../data/tiles.ts";
 import { createRuleEngine } from "../decide/rules/index.ts";
-import type {
-  AssetCatalog,
-  BuildingDecision,
-  MeshData,
-  RoadDecision,
-  TileData,
-  Vec2,
-} from "../types.ts";
+import type { AssetCatalog, BuildingDecision, MeshData, TileData, Vec2 } from "../types.ts";
+import { boxShape, cutAway } from "../util/shapes.ts";
 import { addBuilding, BASE_BAND_M } from "./buildings.ts";
-import { addArea, addGround, LAYER_STEP_M } from "./ground.ts";
+import { addArea, addFlat, addGround, addWalls, LAYER_STEP_M } from "./ground.ts";
 import { MeshSet } from "./mesh.ts";
-import { addRoad, PATH_Y, ROAD_Y } from "./roads.ts";
+import { CURB_HEIGHT_M, ROAD_Y } from "./roads.ts";
 import { FLAT_CAP_M } from "./roofs.ts";
 import { buildTile, GROUND_COLOUR } from "./tile.ts";
 
@@ -70,18 +64,6 @@ const only = (set: MeshSet): MeshData => {
   return data[0];
 };
 
-const roadDecision = (over: Partial<RoadDecision> = {}): RoadDecision => ({
-  kind: "road",
-  id: "way/1",
-  widthM: 7,
-  sidewalks: "none",
-  curbs: false,
-  markings: "none",
-  surface: "asphalt",
-  rules: [],
-  source: "rule",
-  ...over,
-});
 const buildingDecision = (
   heightM: number,
   over: Partial<BuildingDecision> = {},
@@ -98,104 +80,6 @@ const buildingDecision = (
   rules: [],
   source: "rule",
   ...over,
-});
-
-describe("addRoad", () => {
-  const set = new MeshSet();
-  addRoad(
-    set,
-    [
-      [0, 0],
-      [10, 0],
-    ],
-    roadDecision(),
-  );
-  const mesh = only(set);
-  const list = triangles(mesh);
-
-  it("uses the road's surface colour as the material", () => {
-    expect(mesh.material).toBe("asphalt");
-  });
-
-  it("is flat, just above the ground, facing up", () => {
-    for (const t of list) {
-      expect(t.normal).toEqual([0, 1, 0]);
-      expect(measure(t).facesNormal).toBe(true);
-      for (const corner of t.corners) expect(corner[1]).toBeCloseTo(ROAD_Y, 6);
-    }
-  });
-
-  it("is as wide as the decision says", () => {
-    const zs = list.flatMap((t) => t.corners.map((c) => c[2]));
-    expect(Math.max(...zs)).toBeCloseTo(3.5, 5);
-    expect(Math.min(...zs)).toBeCloseTo(-3.5, 5);
-  });
-
-  it("covers the ribbon plus a round cap at each end", () => {
-    // Ribbon 10 m x 7 m = 70 m2; each cap is an 8-sided disc of radius 3.5 m = 34.65 m2.
-    expect(totalArea(list)).toBeCloseTo(70 + 2 * 34.648, 1);
-    expect(list).toHaveLength(2 + 16);
-  });
-
-  it("puts paths a little higher than roads, in their own colour", () => {
-    const paths = new MeshSet();
-    addRoad(
-      paths,
-      [
-        [0, 0],
-        [5, 0],
-      ],
-      roadDecision({ kind: "path", widthM: 1.8, surface: "sidewalk" }),
-    );
-    const path = only(paths);
-    expect(path.material).toBe("sidewalk");
-    expect(path.positions[1]).toBeCloseTo(PATH_Y, 6);
-  });
-
-  it("follows bends without stretching a sharp corner far away", () => {
-    const bend = new MeshSet();
-    const line: Vec2[] = [
-      [0, 0],
-      [20, 0],
-      [20, 20],
-      [0, 19],
-    ];
-    addRoad(bend, line, roadDecision());
-    const toSegment = (x: number, z: number, a: Vec2, b: Vec2): number => {
-      const t =
-        ((x - a[0]) * (b[0] - a[0]) + (z - a[1]) * (b[1] - a[1])) /
-        ((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2);
-      const k = Math.max(0, Math.min(1, t));
-      return Math.hypot(x - (a[0] + k * (b[0] - a[0])), z - (a[1] + k * (b[1] - a[1])));
-    };
-    let farthest = 0;
-    for (const t of triangles(only(bend))) {
-      expect(measure(t).facesNormal).toBe(true);
-      for (const [x, , z] of t.corners) {
-        const distance = Math.min(
-          ...line.slice(1).map((b, i) => toSegment(x, z, line[i] as Vec2, b)),
-        );
-        farthest = Math.max(farthest, distance);
-      }
-    }
-    // Half the width is 3.5 m. A right-angle corner reaches 3.5 x 1.41 = 4.95 m from the line.
-    expect(farthest).toBeGreaterThan(4.9);
-    expect(farthest).toBeLessThanOrEqual(7.01);
-  });
-
-  it("ignores lines too short to draw", () => {
-    const empty = new MeshSet();
-    addRoad(empty, [[1, 1]], roadDecision());
-    addRoad(
-      empty,
-      [
-        [1, 1],
-        [1, 1.001],
-      ],
-      roadDecision(),
-    );
-    expect(empty.toMeshData()).toEqual([]);
-  });
 });
 
 describe("addBuilding", () => {
@@ -371,6 +255,47 @@ describe("addArea", () => {
   });
 });
 
+describe("addFlat and addWalls", () => {
+  // A 10 m square with a 2 m square hole in the middle.
+  const shape = cutAway(boxShape(0, 0, 10, 10), boxShape(4, 4, 6, 6));
+
+  it("draws a flat shape with its holes left open, at the height given", () => {
+    const set = new MeshSet();
+    expect(addFlat(set, shape, 0.15, "sidewalk")).toBeCloseTo(96, 6);
+    const list = triangles(only(set));
+    expect(totalArea(list)).toBeCloseTo(96, 4);
+    for (const t of list) {
+      expect(t.normal).toEqual([0, 1, 0]);
+      expect(measure(t).facesNormal).toBe(true);
+      for (const corner of t.corners) expect(corner[1]).toBeCloseTo(0.15, 6);
+    }
+    expect(addFlat(new MeshSet(), [], 0, "sidewalk")).toBe(0);
+  });
+
+  it("stands walls along every edge, facing away from the shape: outwards, and into the hole", () => {
+    const set = new MeshSet();
+    addWalls(set, shape, 0, 0.15, "curb");
+    const list = triangles(only(set));
+    // Outline 40 m and hole 8 m of wall, 0.15 m high.
+    expect(totalArea(list)).toBeCloseTo(48 * 0.15, 4);
+    for (const t of list) {
+      expect(measure(t).facesNormal).toBe(true);
+      const x = t.corners.reduce((sum, c) => sum + c[0], 0) / 3;
+      const z = t.corners.reduce((sum, c) => sum + c[2], 0) / 3;
+      const onHole = x > 3.9 && x < 6.1 && z > 3.9 && z < 6.1;
+      // Away from the solid part: away from the centre on the outline, towards it on the hole.
+      const outwards = (x - 5) * t.normal[0] + (z - 5) * t.normal[2];
+      expect(onHole ? outwards < 0 : outwards > 0).toBe(true);
+    }
+  });
+
+  it("leaves out the edges it is told to skip", () => {
+    const set = new MeshSet();
+    addWalls(set, boxShape(0, 0, 10, 10), 0, 1, "curb", (a, b) => a[0] === 0 && b[0] === 0);
+    expect(totalArea(triangles(only(set)))).toBeCloseTo(30, 4);
+  });
+});
+
 describe("buildTile on the test tile", () => {
   const data = testTile as unknown as TileData;
   const tile = prepareTile(data, "2026-11-13T12:00:00.000Z");
@@ -390,16 +315,70 @@ describe("buildTile on the test tile", () => {
     const names = built.meshes.map((m) => m.material);
     expect(names).toEqual([...names].sort());
     expect(new Set(names).size).toBe(names.length);
-    // Roads, paths, unmapped ground, the car park, building bases and flat-roof caps.
-    for (const name of ["asphalt", "sidewalk", GROUND_COLOUR, "wall.base", "roof.dark"]) {
+    // Roads, sidewalks and curbs, the centre line of Test Road, unmapped ground, building
+    // bases and flat-roof caps.
+    for (const name of [
+      "asphalt",
+      "sidewalk",
+      "sidewalk.joint",
+      "curb",
+      "road.yellow",
+      GROUND_COLOUR,
+      "wall.base",
+      "roof.dark",
+    ]) {
       expect(names).toContain(name);
     }
+  });
+
+  it("raises curbs and sidewalks above the road, and keeps paint just over it", () => {
+    const heights = (material: string) =>
+      new Set(
+        triangles(mesh(material)).flatMap((t) =>
+          t.corners.map((c) => Math.round(c[1] * 1000) / 1000),
+        ),
+      );
+    expect([...heights("sidewalk")]).toContain(CURB_HEIGHT_M);
+    expect(Math.max(...heights("curb"))).toBe(CURB_HEIGHT_M);
+    expect(Math.min(...heights("curb"))).toBe(0);
+    const paint = [...heights("road.yellow")];
+    expect(paint).toHaveLength(1);
+    expect(paint[0]).toBeGreaterThan(ROAD_Y);
+    expect(paint[0]).toBeLessThan(ROAD_Y + 0.02);
+  });
+
+  it("draws the driving surface once: no overlapping road pieces", () => {
+    // Every road triangle at road height lies flat; together they cover each spot only once,
+    // so their total area equals the area of their outline. Checked on a coarse grid of spots.
+    const road = triangles(mesh("asphalt")).filter((t) =>
+      t.corners.every((c) => Math.abs(c[1] - ROAD_Y) < 1e-6),
+    );
+    expect(road.length).toBeGreaterThan(10);
+    const inside = (x: number, z: number, t: Triangle): boolean => {
+      const [a, b, c] = t.corners;
+      const side = (p: number[], q: number[]) =>
+        (q[0] - p[0]) * (z - p[2]) - (q[2] - p[2]) * (x - p[0]);
+      const [d1, d2, d3] = [side(a, b), side(b, c), side(c, a)];
+      return (d1 > 1e-9 && d2 > 1e-9 && d3 > 1e-9) || (d1 < -1e-9 && d2 < -1e-9 && d3 < -1e-9);
+    };
+    const xs = road.flatMap((t) => t.corners.map((c) => c[0]));
+    const zs = road.flatMap((t) => t.corners.map((c) => c[2]));
+    let covered = 0;
+    for (let x = Math.min(...xs) + 0.37; x < Math.max(...xs); x += 3.1) {
+      for (let z = Math.min(...zs) + 0.53; z < Math.max(...zs); z += 3.1) {
+        const hits = road.filter((t) => inside(x, z, t)).length;
+        expect(hits).toBeLessThanOrEqual(1);
+        covered += hits;
+      }
+    }
+    expect(covered).toBeGreaterThan(50);
   });
 
   it("builds the seven buildings this tile owns (six from OSM, one gap-fill) and its four roads", () => {
     expect(built.counts.buildings).toBe(7);
     expect(built.counts.roads).toBe(4);
     expect(built.counts.areas).toBe(3);
+    expect(built.counts.signs).toBe(0);
     expect(built.counts.triangles).toBe(
       built.meshes.reduce((sum, m) => sum + m.indices.length / 3, 0),
     );
@@ -438,7 +417,7 @@ describe("buildTile on the test tile", () => {
     const box = tileBounds(data.id);
     const [west, north] = project(region, { lat: box.north, lon: box.west });
     const [east, south] = project(region, { lat: box.south, lon: box.east });
-    // Roads are cut at the tile's edge; only their round caps (half a road width) reach past it.
+    // Roads and sidewalks are cut exactly at the tile's edge; only buildings may poke out a little.
     for (const m of built.meshes) {
       for (let i = 0; i < m.positions.length; i += 3) {
         const x = m.positions[i] as number;
@@ -483,6 +462,15 @@ describe("buildTile on the test tile", () => {
     expect(buildTile(tile, region, createRuleEngine(), selector).placements).toEqual(
       withModels.placements,
     );
+    // The two named shops in Test Plaza each get a board with their name on it.
+    const boards = withModels.placements.filter((p) => p.text !== undefined);
+    expect(boards.map((p) => p.text).sort()).toEqual(["Test Bakery", "Test Flowers"]);
+    expect(withModels.counts.signs).toBe(2);
+    for (const board of boards) {
+      expect(board.asset).toBe("sign.shop.blank");
+      expect(board.tint).toMatch(/^(sign\.|cream)/);
+      expect(board.pos[1]).toBeGreaterThan(2);
+    }
     // Trees fill the fixture's park and yards; every asset id exists in the catalog.
     for (const p of withModels.placements) expect(selector.entry(p.asset)).toBeDefined();
     expect(withModels.placements.some((p) => p.asset.startsWith("tree."))).toBe(true);

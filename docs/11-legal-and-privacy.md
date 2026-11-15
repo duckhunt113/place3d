@@ -36,6 +36,8 @@ Only use imagery whose licence allows deriving data (detections, colours). Some 
 
 Draw **shop names in our own font and colours**. Don't copy real brand logos: they're trademarks. Names alone are recognisable.
 
+The sign lettering is **Fredoka**, under the SIL Open Font License 1.1: free to use and bundle, including commercially. It is bundled with the app through the `@fontsource/fredoka` package.
+
 ## Private homes
 
 | Place type                                                           | Detail level                                                                   |

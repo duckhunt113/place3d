@@ -20,9 +20,9 @@ OSM tags say *what* something is. Rules decide *what the game builds for it*. Ru
 | File | Covers | Typical output |
 |---|---|---|
 | `buildings.json` | `building=*` and building tags | `type`, `storeys`, `roof` (`flat`, `hipped`, `gabled`, `pyramidal`), `colour` and `roofColour` (lists of palette names, seeded pick), `shopSigns` |
-| `roads.json` | `highway=*` lines | `kind`, `lanes`, `laneWidthM` or `widthM`, `sidewalks`, `curbs`, `markings`, `surface` |
-| `areas.json` | landuse, leisure, natural, amenity areas | `surface`, `layer` (drawing order where areas overlap: 1 land use, 2 green, 3 hard or sandy, 4 water), `markings`, `scatter` (asset requests per m²) |
-| `objects.json` | points and lines that place models | `place` (`point` or `along`), `spacingM`, `asset` request, `heightM` |
+| `roads.json` | `highway=*` lines | `kind`, `lanes`, `laneWidthM` or `widthM`, `sidewalks`, `curbs`, `markings` (`centre`), `stalls` (true on parking aisles: stalls are painted along both sides), `surface` |
+| `areas.json` | landuse, leisure, natural, amenity areas | `surface`, `layer` (drawing order where areas overlap: 1 land use, 2 green, 3 hard or sandy, 4 water; use a value in between, like 1.5, when two kinds of area that overlap would share a layer and flicker), `markings` (`stalls` on parking lots), `scatter` (asset requests per m²) |
+| `objects.json` | points and lines that place models | `place` (`point`, `along`, or `wall` for a name sign on the nearest building's front wall), `spacingM`, `asset` request, `heightM`, and for signs `text` (usually `"@name"`) and `colour` (palette names for the sign's face, seeded pick) |
 
 ## Rule format
 

@@ -175,6 +175,9 @@ importers:
       '@dimforge/rapier3d-compat':
         specifier: ^0.21.0
         version: 0.21.0
+      '@fontsource/fredoka':
+        specifier: 5.3.0
+        version: 5.3.0
       '@somewhere/world':
         specifier: workspace:*
         version: link:../../packages/world
@@ -302,6 +305,9 @@ packages:
 
   '@emnapi/wasi-threads@2.2.0':
     resolution: {integrity: sha512-JP7OYH38Q7+pyTAe14raZHLQIK7BDKbdwji+Xi3pcd/6QkJYQH3SX4wu6EplGrGJWRepoNzedfm0G3B9Z4e9Rw==}
+
+  '@fontsource/fredoka@5.3.0':
+    resolution: {integrity: sha512-s2IhjQ50wDnKkkaKmjhtL0rxQg6ITsVusiipM3m7zUwVZZbbCKsscNDkngwp28xVzfIt7neWrkgU1qKqyTycQg==}
 
   '@jridgewell/resolve-uri@3.1.2':
     resolution: {integrity: sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw==}
@@ -931,6 +937,8 @@ snapshots:
     dependencies:
       tslib: 2.9.1
     optional: true
+
+  '@fontsource/fredoka@5.3.0': {}
 
   '@jridgewell/resolve-uri@3.1.2': {}
 

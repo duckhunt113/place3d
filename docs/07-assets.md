@@ -138,7 +138,7 @@ MVP: a small catalog (about 5 trees, a few props, a blank shop sign) and the sel
 - **MVP:** the renderer swaps each `pal:` material for its palette colour at load time. Simple, and fine for a small kit.
 - **When the kit grows:** an asset build step (`gltf-transform`) bakes each `pal:` name into UVs on the single shared palette material. To add colours, grow the grid or rearrange it, update `palette.json` and re-run the step; every model is re-mapped automatically.
 - **Generated surfaces** (roads, lawns, walls) take vertex colours from the same names.
-- **Special materials:** `sign:face` is the only non-palette material: the face of a sign board where the game draws text (a shop name). The renderer replaces it with a generated texture.
+- **Special materials:** `sign:face` is the only non-palette material: the face of a sign board where the game draws text (a shop name). It must be one flat rectangle facing the model's +z. The renderer finds it in the model and lays the name over it, so a new board model needs no code.
 - **Never rename or remove a colour name.** Changing a colour's shade is fine.
 - **Restyles:** variant palettes (e.g. `palette.winter.json`) use the same names and layout, so every model works with any of them. The palette has a `version`; a world or room uses one version for everyone.
 - **Variation without new colours:** use the placement `tint` before adding near-duplicate colours, and keep the palette limited so the look stays cohesive.

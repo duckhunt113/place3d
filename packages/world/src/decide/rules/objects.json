@@ -1,7 +1,7 @@
 {
-  "version": 1,
+  "version": 2,
   "domain": "objects",
-  "note": "OSM tag rules for placed objects: asset requests (category + wanted attributes), never asset IDs or file names.",
+  "note": "OSM tag rules for placed objects: asset requests (category + wanted attributes), never asset IDs or file names. place: \"point\" = at its mapped spot, \"along\" = repeated along a line, \"wall\" = a name sign on the nearest building's front wall (text = what it says, colour = palette names to pick the face colour from).",
   "rules": [
     {
       "id": "tree.point",
@@ -109,6 +109,54 @@
           "category": "sign.stop"
         }
       }
+    },
+    {
+      "id": "sign.shop",
+      "when": {
+        "shop": "*",
+        "name": "*"
+      },
+      "then": {
+        "place": "wall",
+        "asset": {
+          "category": "sign.shop"
+        },
+        "text": "@name",
+        "colour": ["sign.red", "sign.green", "sign.teal", "sign.navy", "sign.orange", "cream"]
+      }
+    },
+    {
+      "id": "sign.amenity",
+      "when": {
+        "amenity": [
+          "restaurant",
+          "cafe",
+          "fast_food",
+          "pub",
+          "bar",
+          "ice_cream",
+          "pharmacy",
+          "bank",
+          "dentist",
+          "doctors",
+          "clinic",
+          "veterinary",
+          "post_office",
+          "library",
+          "cinema",
+          "theatre"
+        ],
+        "name": "*"
+      },
+      "then": {
+        "place": "wall",
+        "asset": {
+          "category": "sign.shop"
+        },
+        "text": "@name",
+        "colour": ["sign.red", "sign.green", "sign.teal", "sign.navy", "sign.orange", "cream"]
+      },
+      "note": "Places people walk into. Other amenities (benches, bins, parking) never get a name sign."
     }
   ]
 }

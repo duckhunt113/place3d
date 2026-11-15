@@ -9,13 +9,15 @@ import {
   regionFor,
 } from "@somewhere/world";
 import { createPhysics } from "./physics/world.ts";
+import { insideBoxes } from "./player/area.ts";
 import { createPlayer } from "./player/player.ts";
 import { createWorldView } from "./render/view.ts";
+import { createLoading } from "./ui/loading.ts";
 import { formatLocation, parseLocation } from "./ui/location.ts";
 import { createPanel, type ViewChoice } from "./ui/panel.ts";
-import { createWorldClient } from "./worker/client.ts";
+import { createWorldClient, type TileResult } from "./worker/client.ts";
 
-/** MVP: a fixed radius around the entered point. */
+/** MVP: every tile within this distance of the entered point is loaded. */
 const RADIUS_M = 300;
 
 async function start(): Promise<void> {
@@ -36,6 +38,7 @@ async function start(): Promise<void> {
 
   const view = createWorldView(app, palette, catalog, assetsUrl);
   const panel = createPanel(app);
+  const loading = createLoading(app);
   const world = createWorldClient();
   const player = createPlayer(physics, view.canvas);
   let latest = 0;
@@ -75,6 +78,37 @@ async function start(): Promise<void> {
     const started = performance.now();
     const middle = project(regionFor(centre), centre);
     const streets: RoadPath[] = [];
+    /** What each tile holds, where its data came from, and the ground it covers. */
+    const tiles = new Map<string, TileResult>();
+    let seconds = "";
+
+    /** The status line: what the area holds, where it came from, and what is still missing. */
+    const report = (): void => {
+      const all = [...tiles.values()];
+      const sum = (pick: (counts: TileResult["tile"]["counts"]) => number) =>
+        all.reduce((total, result) => total + pick(result.tile.counts), 0);
+      const from = (origin: TileResult["from"]) => all.filter((r) => r.from === origin).length;
+      const signs = sum((c) => c.signs);
+      const parts = [
+        `${sum((c) => c.buildings)} buildings, ${sum((c) => c.roads)} road pieces, ${sum((c) => c.placements) - signs} trees and props and ${signs} shop signs in ${all.length} tiles (${seconds} s).`,
+      ];
+      // Where the map data came from, when any of it came over the network or from the cache.
+      const origins = [
+        from("network") > 0 ? `${from("network")} fetched from the map server` : "",
+        from("cache") > 0 ? `${from("cache")} from this device's cache` : "",
+      ].filter((part) => part !== "");
+      if (origins.length > 0) parts.push(`${origins.join(", ")}.`);
+      const missing = all.filter((r) => r.from === "failed");
+      if (missing.length > 0) {
+        parts.push(
+          missing.some((r) => r.retrying)
+            ? `${missing.length} could not be loaded yet; trying again...`
+            : `${missing.length} could not be loaded.`,
+        );
+      }
+      panel.setStatus(parts.join(" "), missing.length > 0 ? "error" : "info");
+    };
+
     // Show the area filling in from above; walking starts when everything is there.
     ready = false;
     showView();
@@ -83,37 +117,56 @@ async function start(): Promise<void> {
     view.lookAt(middle, RADIUS_M);
     panel.setBusy(true);
     panel.setStatus("Loading the map...");
-    let done = 0;
+    loading.show(0, 0);
+    let total = 0;
     try {
-      const summary = await world.loadArea(centre, RADIUS_M, (result) => {
-        if (request !== latest) return;
-        done++;
-        if (result.ok) {
+      const summary = await world.loadArea(
+        centre,
+        RADIUS_M,
+        (result) => {
+          if (request !== latest) return;
+          // Also called later, when a tile that failed at first has been tried again.
+          tiles.set(result.key, result);
           view.addTile(result.tile);
           physics.setTile(result.key, result.tile.colliders, result.tile.ground);
-          streets.push(...result.tile.roads);
-        } else console.warn(`Tile ${result.key} failed: ${result.error}`);
-        panel.setStatus(`Building tile ${done}...`);
-      });
+          if (result.from === "failed") console.warn(`Tile ${result.key} failed: ${result.error}`);
+          else streets.push(...result.tile.roads);
+          if (ready) report();
+          else loading.show(tiles.size, total);
+        },
+        (count) => {
+          total = count;
+          if (request === latest) loading.show(tiles.size, total);
+        },
+      );
       if (request !== latest || !summary.finished) return;
-      // Start on the street nearest to the place asked for, and stay inside the loaded circle.
+      // Start on the street nearest to the place asked for. The player can walk wherever
+      // a tile is loaded: each tile's ground says what it covers.
       player.spawn(findSpawn(middle, streets));
-      player.setBounds({ centre: middle, radiusM: RADIUS_M });
+      player.setBounds(
+        insideBoxes(
+          [...tiles.values()].map(({ tile }) => {
+            const { centre: at, size } = tile.ground;
+            return {
+              minX: at[0] - size[0] / 2,
+              maxX: at[0] + size[0] / 2,
+              minZ: at[1] - size[1] / 2,
+              maxZ: at[1] + size[1] / 2,
+            };
+          }),
+        ),
+      );
       ready = true;
       showView();
-      const seconds = ((performance.now() - started) / 1000).toFixed(1);
-      const failed =
-        summary.failed > 0
-          ? ` ${summary.failed} of ${summary.tiles} tiles could not be loaded.`
-          : "";
-      panel.setStatus(
-        `${summary.buildings} buildings, ${summary.roads} road pieces and ${summary.placements} trees and props in ${summary.tiles} tiles (${seconds} s).${failed}`,
-        summary.failed > 0 ? "error" : "info",
-      );
+      seconds = ((performance.now() - started) / 1000).toFixed(1);
+      report();
     } catch (error) {
       if (request === latest) panel.setStatus(`Something went wrong: ${String(error)}`, "error");
     } finally {
-      if (request === latest) panel.setBusy(false);
+      if (request === latest) {
+        panel.setBusy(false);
+        loading.hide();
+      }
     }
   };
 

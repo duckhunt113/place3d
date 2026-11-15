@@ -6,9 +6,9 @@ Enter coordinates → a 300 m area appears in our stylized look → you can walk
 
 ## In the MVP
 
-1. **Location input**: latitude/longitude box, or paste a Google Maps link. We only read the coordinates out of the URL and never use Google's map data. Radius fixed at 300 m.
+1. **Location input**: latitude/longitude box, or paste a Google Maps link. We only read the coordinates out of the URL and never use Google's map data. Every map tile within 300 m of that point is loaded, and you can walk wherever a tile is loaded.
 2. **Map data**: through the tile source: saved Albertson Crescent tiles first, then live Overpass for any other place. OpenStreetMap supplies everything it has; Overture Maps supplies building outlines where OpenStreetMap has none (most houses around Albertson Crescent). Flat ground (no terrain yet).
-3. **Tiles and caching**: fetch and build the area tile by tile from the start; save each tile so areas load instantly the second time (see [04-pipeline.md](04-pipeline.md)).
+3. **Tiles and caching**: fetch and build the area tile by tile from the start; tiles fetched from the map server are saved on the device (IndexedDB), so an area loads without the network the second time (see [04-pipeline.md](04-pipeline.md)). A loading card shows progress tile by tile; a tile that fails shows as plain ground and is tried again.
 4. **Decisions**: OSM tags + simple rules + safe defaults. No AI.
 5. **Generated in code**:
    - roads, curbs, sidewalks, lawns, parks, water
@@ -37,17 +37,16 @@ Enter coordinates → a 300 m area appears in our stylized look → you can walk
 
 ## Build order
 
-| Step | Result                                                                                                                                     | Rough time |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------- |
-| 1    | Projection + tile grid; tile source with saved Albertson tiles, then Overpass; coordinates in → plain grey roads and building boxes appear | 2–3 days   |
-| 2    | Style pass: colours, roofs, grass, trees, sky, shadows                                                                                     | 2–3 days   |
-| 3    | First-person controls + Rapier physics                                                                                                     | 1–2 days   |
-| 4    | Shop name signs, parking lines, sidewalks                                                                                                  | 1–2 days   |
-| 5    | Saved tile cache (IndexedDB), so revisited areas load instantly                                                                            | 1 day      |
+| Step | Result                                                                                                                                     |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1    | Projection + tile grid; tile source with saved Albertson tiles, then Overpass; coordinates in → plain grey roads and building boxes appear |
+| 2    | Style pass: colours, roofs, grass, trees, sky, shadows                                                                                     |
+| 3    | First-person controls + Rapier physics                                                                                                     |
+| 4    | Shop name signs, parking lines, sidewalks                                                                                                  |
+| 5    | Saved tile cache (IndexedDB), so revisited areas load instantly                                                                            |
+| 6    | Finish line: performance budgets, credits, repo audit                                                                                      |
 
-The item-by-item plan for each step, with checkboxes, is in [14-mvp-roadmap.md](14-mvp-roadmap.md).
-
-Tip: step 1 can start with **no buildings at all** (roads + ground + walking) as a one-day stepping stone, then add boxes.
+All six steps are done. The item-by-item plan for each step, with checkboxes, is in [14-mvp-roadmap.md](14-mvp-roadmap.md).
 
 ## Done when
 

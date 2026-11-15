@@ -2,13 +2,13 @@
 
 Somewhere is a web app. You enter coordinates and a radius, and the real area inside that radius is rebuilt from open map data (OpenStreetMap, plus Overture Maps building outlines where OpenStreetMap has none) as a bright, kid-friendly, stylized 3D world (faceted low-poly trees, smooth simplified buildings and streets; see the `art-style` skill). You then explore it in first person in the browser. Multiplayer and AI features come after the MVP.
 
-**Status:** MVP in progress. Steps 1 to 3 are built: enter coordinates and walk around Albertson Crescent in first person, with coloured houses and pitched roofs, real ground surfaces, trees and street props, a blue sky and shadows. Buildings, tree trunks and props are solid, and a free view (the F key) flies above the area. Next is step 4, details (build plan: `docs/14-mvp-roadmap.md`). Full project details live in `docs/` (start at `docs/README.md`).
+**Status:** the MVP (v0.1) is built. Enter coordinates and walk around Albertson Crescent in first person, with coloured houses and pitched roofs, real ground surfaces, trees and street props, a blue sky and shadows. Streets have clean junctions, curbs, sidewalks and centre lines; parking lots have stalls; shops carry their real names on sign boards. Buildings, tree trunks and props are solid, and a free view (the F key) flies above the area. Tiles fetched from the map server are kept on the device, so a place loads without the network the second time. What comes next is in `docs/12-roadmap.md` (the MVP's build plan: `docs/14-mvp-roadmap.md`). Full project details live in `docs/` (start at `docs/README.md`).
 
 ## Current scope: MVP only
 
 These are in scope (see `docs/02-mvp.md`):
 
-- single player, first person, a fixed 300 m radius, flat ground
+- single player, first person, flat ground, every map tile within 300 m of the entered point (you can walk wherever a tile is loaded)
 - map data through a tile source (saved Albertson Crescent tiles first, then live Overpass), with a tile cache: OSM for everything, plus Overture Maps building outlines where OSM has no building
 - decisions from tags, rules and defaults
 - generated roads, curbs, sidewalks, lawns, parks, water, and parking lots with stall lines
@@ -35,21 +35,21 @@ The MVP is done when you can recognise Albertson Crescent and the nearby Lorne P
 ```
 apps/web/            @somewhere/web: Vite + TypeScript + three + @dimforge/rapier3d-compat
   src/main.ts        wires ui, worker and render together; never imports three itself
-  src/ui/            coordinate input + map-link parser, status panel, map data credits (plain DOM)
+  src/ui/            coordinate input + map-link parser, status panel, loading card, map data credits (plain DOM)
   src/worker/        Web Worker that runs @somewhere/world off the main thread (through comlink)
-  src/cache/         tile cache storage (IndexedDB), implements the world package's cache interface
-  src/render/        the ONLY place allowed to import three: view (walking + free cameras), meshes (one mesh per tile), assets + instances (models), sky, lighting
+  src/cache/         tile cache storage (IndexedDB through idb-keyval), implements the world package's cache interface
+  src/render/        the ONLY place allowed to import three: view (walking + free cameras), meshes (one mesh per tile), assets + instances (models), signs (shop names), sky, lighting
   src/physics/       the ONLY place allowed to import Rapier: the physics world, built from the world package's collider data
-  src/player/        walker (movement logic, tested), input (keyboard + mouse), player (ties them to the eyes)
+  src/player/        walker (movement logic, tested), area (where the player may walk), input (keyboard + mouse), player (ties them to the eyes)
   public/assets/     .glb asset kit + catalog.json (asset catalog) + palette.json (colours)
 packages/world/      @somewhere/world: plain TypeScript, engine-free
-  src/data/          tiling, lat/lon -> metres, parsing, clipping, gap-filling, cache interface (no storage code)
+  src/data/          tiling (and the tile margin), lat/lon -> metres, parsing, clipping, gap-filling, the tile loader (shipped tiles -> cache -> network), cache interface (no storage code)
     sources/         map data sources: saved files, Overpass (OSM), Overture (buildings)
     fixtures/        test-tile.json (small hand-made test tile); tiles/ = the saved Albertson Crescent tiles (generated)
   src/decide/        rule engine, geometry facts; rules/*.json = OSM tag rules as data (buildings, roads, areas, objects)
-  src/generator/     roads, ground and areas, buildings, roofs, placements, colliders, spawn -> plain mesh data + placements + collider shapes
+  src/generator/     roads (the street plan), sidewalks, parking, ground and areas, buildings, roofs, placements, signs, colliders, spawn -> plain mesh data + placements + collider shapes
   src/assets/        asset catalog types + selector (requirements -> asset ID)
-  src/util/          seeded RNG, geometry maths
+  src/util/          seeded RNG, geometry maths, flat shapes (join, cut away, overlap, thick lines)
 apps/server/         (later) Colyseus rooms + server-side fetch, decisions and tile storage
 scripts/             project scripts (build-palette.mjs, fetch-fixture-tiles.ts)
 docs/                design docs: read the relevant one before big changes
@@ -90,8 +90,11 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
    - Cache by fixed zoom-17 map tiles (about 220 m across in southern Ontario; 306 m × cos(latitude)), never by "circle around a point".
    - Each building belongs to one owner tile, chosen by its centroid.
    - Lines are clipped at tile edges.
+   - **A tile knows its close surroundings.** Its map data reaches `TILE_MARGIN_M` (30 m) past its edges, and the stored tile keeps a `context`: every road piece inside that margin, neighbours' buildings that reach in, and neighbours' points close by. Context is never built as such; it shapes what is built (junctions, curbs, sidewalks, sign spots) so neighbouring tiles agree along their shared edge. Everything drawn is then cut exactly at the tile's edge. Anything spaced along a road (sidewalk joints, parking stalls) is counted from the start of the whole road (`offsetM`), never from where a tile happens to cut it.
    - Decisions are keyed by feature ID, never stored per tile. Feature IDs always say their source, so they never clash: OSM IDs are type-qualified (`node/1`, `way/123`, `relation/9`, because OSM numbers each type separately) and Overture buildings are `overture/<GERS id>`.
    - Saved tiles carry a `version` and a timestamp.
+   - **How a tile is found** (`createTileLoader`, `packages/world/src/data/loader.ts`): tiles that ship with the app first, then the device's cache, then the network; what the network returns is saved. Shipped tiles are never cached, so changing them always shows at once. A cached tile in an older format, or older than 30 days, is fetched again; if that fails the old one is still used. Two requests for the same tile at the same time share one fetch. Bump `WORLD_TILE_VERSION` when the stored tile's shape changes and `TILE_FORMAT_VERSION` when the fetched data's does.
+   - **A tile that cannot be loaded is still a tile:** plain ground, solid to walk on, replaced when a retry succeeds. Nothing may depend on every tile loading.
    - **Map data only comes through the `TileSource` interface** (`packages/world/src/data`). `getTile(id)` returns that tile's data in one normalized format: its OSM elements (Overpass `out geom` JSON), including everything that _touches_ the tile, not only what lies inside, plus any gap-fill buildings, the source name and the fetch time. Nothing else calls Overpass or any other map service.
    - **Two map data sources, OSM first.** OSM supplies everything it has. Overture Maps supplies building outlines only, and only where OSM has no building: an outline that overlaps an OSM building (shared part at least 20% of the smaller one) is dropped. This is done once, when a tile is saved or built (`fillBuildingGaps`), never at play time. See `docs/05-data-sources.md`.
    - **Other sources speak OSM.** A source other than OSM turns its fields into OSM-style tags in its own module under `data/sources/` (Overture: `building`, `height`, `building:levels`, `name`), so the same rules decide what things become. Add any future source the same way: its own module, source-qualified IDs, OSM-style tags, OSM wins on overlap.
@@ -144,7 +147,7 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
 - **Bugs:** every bug fix adds a test that fails without the fix.
 - **Assertions:** check real values with tolerances where maths is involved (`toBeCloseTo`), not just "is defined" or "doesn't throw".
 - **Speed:** the whole suite should run in a few seconds; no sleeps or timers.
-- **Web tests:** `apps/web` uses Vitest too, for plain logic only (`src/ui/location.test.ts`, `src/player/walker.test.ts`). Keep that logic in files that don't import three or touch the DOM, so the tests need no browser. Walking is tested against the real physics engine, which runs in Node: speeds, walls, tree trunks, jumping, slopes.
+- **Web tests:** `apps/web` uses Vitest too, for plain logic only (`src/ui/location.test.ts`, `src/player/walker.test.ts`, `src/cache/tiles.test.ts`, `src/render/sign-text.test.ts`). Keep that logic in files that don't import three or touch the DOM, so the tests need no browser. Anything that needs the browser takes it as a parameter (the cache takes its storage, sign text takes its measuring function). Walking is tested against the real physics engine, which runs in Node: speeds, walls, tree trunks, jumping, slopes.
 - **Done means green:** before calling any change finished, run `pnpm lint && pnpm typecheck && pnpm test` and fix any failure. Never delete, skip (`.skip`) or weaken a failing test to make it pass unless the behaviour was intentionally changed, and say so when you do.
 
 ## Working style
@@ -153,19 +156,26 @@ Use **pnpm only**. Never use npm or yarn to install or add packages (use `pnpm d
 - **Rules and catalog changes** need no code: edit `decide/rules/*.json` or `catalog.json`, keep ids stable, run the tests.
 - **Approved libraries for these jobs** (use them; don't hand-roll or add alternatives without recording the reason here):
   - `earcut` (world): triangulate outlines (buildings, lawns, parking lots)
-  - `polygon-clipping` (world): clip shapes at tile edges, unions/intersections, overlap checks
+  - `polygon-clipping` (world): clip shapes at tile edges, unions/intersections, overlap checks. Use it through `util/shapes.ts` (`unite`, `join`, `cutAway`, `overlap`), which retries when the library gives up. Never round coordinates before handing shapes to it: rounding turns edges that match exactly into edges that almost match, which is what makes it fail.
+  - `@fontsource/fredoka` (web): the lettering for shop signs, bundled so every machine draws the same letters (SIL Open Font License)
   - `comlink` (web): call the world Web Worker like normal async functions
   - `idb-keyval` (web): IndexedDB storage behind the tile cache
 - **New dependencies:** must suit their package (in `packages/world`: no DOM, three.js or Rapier) and pass hard rule 10; add them to `docs/10-tech-stack.md` in the same change.
 - **Imports in `packages/world`:** relative imports end in `.ts`, JSON imports use `with { type: "json" }`, and only erasable TypeScript syntax is allowed (no `enum`, `namespace` or constructor parameter properties; `erasableSyntaxOnly` enforces it). This lets plain Node run the world code without a build step (scripts now, the server later).
 - **Scripts** live in `scripts/` as ES modules (the root `package.json` has `"type": "module"`). Scripts that use world code are TypeScript, run with `node --experimental-strip-types`, and import the world package's own functions rather than copying them (the fixture fetch uses the game's own Overpass query). The fixture script needs `uv` installed, because it runs Overture's download tool through `uvx`; nothing else in the project needs Python.
-- **Generated files** are never edited by hand; change their source and re-run the command: `palette.png` and `docs/palette-preview.html` (`pnpm palette`), `packages/world/src/data/fixtures/tiles/` (`pnpm fixtures`).
+- **Generated files** are never edited by hand; change their source and re-run the command: `palette.png` and `docs/palette-preview.html` (`pnpm palette`), `packages/world/src/data/fixtures/tiles/` (`pnpm fixtures`). When `TILE_FORMAT_VERSION` goes up, the saved tiles must be fetched again with `pnpm fixtures` (the tests say so).
 - **One generator file per kind of shape, not per kind of thing.** New geometry gets a file (`roofs.ts` for roofs); a new thing that reuses existing geometry gets a rule instead (a stream is a ribbon like a road, so it needs no `water.ts`).
+- **Streets are worked out together, as flat shapes.** `generator/roads.ts` thickens every road line into a ribbon (`ribbonPieces`), joins them into one driving surface, and cuts that out of wider ribbons to get the curb and the sidewalk. Never draw one road at a time: overlapping pieces flicker and junctions come out wrong. New things along a road (a bike lane, a verge) are one more ribbon width in that plan.
+- **Where roads meet is found by shared points.** Two road lines meet where they have the same point (to the centimetre), as in OSM. A road end's roundness, and the gap in a centre line, come from what else passes through that point.
+- **Signs hang in bays.** A wall is divided into equal bays that depend only on the wall; a sign goes in the bay nearest its shop, and the smallest id wins a bay two shops want. Because bays never depend on which signs exist, two tiles sharing a building agree without talking to each other.
 - **Scatter is seeded by a fixed world grid.** Scattered models use one candidate spot per cell of a global Web Mercator grid, seeded by the cell's numbers, and each spot belongs to the one tile that contains it. Never scatter from local x/z or per tile.
 - **Three.js stays in `apps/web/src/render`:** `main.ts`, `ui/`, `worker/` and `player/` talk to the renderer through the small interface `createWorldView` returns (the player hands over an eye position and two angles, nothing more).
 - **Directions are measured clockwise from north.** A yaw or bearing of 0 looks north (−z) and a quarter turn looks east (+x), everywhere: spawn points, the player, the sun. Only `render/` converts to three.js's own angles.
 - **Ground height comes from one function.** Anything that stands on the ground asks `groundHeightAt(x, z)` in `generator/ground.ts` (flat for now). Terrain later changes that one answer and the ground grid's heights, not the callers.
 - **Two views.** Walking is the game; the free view is the fly-around camera for looking at the area from above. `main.ts` owns which one is on (the panel button or the F key). The player stays where they are while the free view is on.
+- **The walkable area is the loaded tiles**, not a circle: `player/area.ts` keeps the player on the rectangles of ground the loaded tiles cover.
+- **Draw calls and triangles are shown on screen** next to the FPS counter (shadow pass included). Check them against hard rule 7 after any change that adds geometry or models. Measured on the Albertson Crescent area: about 120 draw calls and 0.85 M triangles on foot, 190 and 1.15 M with the whole area in the free view.
+- **Another Overpass server:** set `VITE_OVERPASS_URL` when starting or building the web app (for example a self-hosted one). Without it the public server is used.
 - **How walking feels is data in one place:** the `PLAYER` settings in `apps/web/src/player/walker.ts` (speeds, jump, sizes). Movement runs in fixed 1/60 s steps, so it is the same at any frame rate.
 - **Biome** is the only linter and formatter (config in `biome.json`: 2 spaces, double quotes, semicolons, 100-char lines). Don't add ESLint or Prettier. Run `pnpm fix` before committing; don't silence a lint rule without a short comment saying why (`// biome-ignore lint/<rule>: <reason>`).
 - **Build plan:** `docs/14-mvp-roadmap.md` lists the MVP work in order. Unless asked otherwise, work on its "Next up" item; when an item is done and green, tick it and update "Next up" in the same change.

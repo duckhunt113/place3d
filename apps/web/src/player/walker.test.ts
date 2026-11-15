@@ -1,6 +1,7 @@
 import { type Collider, type GroundGrid, groundCollider } from "@somewhere/world";
 import { beforeAll, describe, expect, it } from "vitest";
 import { type Character, createPhysics, type Physics } from "../physics/world.ts";
+import { insideBoxes } from "./area.ts";
 import { createWalker, type Intent, PLAYER, STEP_SECONDS } from "./walker.ts";
 
 const still: Intent = { forward: 0, right: 0, run: false, jump: false, yaw: 0 };
@@ -180,15 +181,24 @@ describe("walking", () => {
     expect(walker.position()[1]).toBeCloseTo(0, 1);
   });
 
-  it("stays inside the walkable circle and slides along its edge", () => {
+  it("stays inside the walkable area and slides along its edge", () => {
     const { walker, run } = playerAt(0, 0);
-    walker.setBounds({ centre: [0, 0], radiusM: 10 });
+    // Walkable: a 20 m square around the start.
+    walker.setBounds(insideBoxes([{ minX: -10, maxX: 10, minZ: -10, maxZ: 10 }]));
     run(seconds(5), north);
     expect(walker.position()[2]).toBeCloseTo(-10, 1);
-    run(seconds(2), { ...still, forward: 1, right: 1 });
-    const [x, , z] = walker.position();
-    expect(Math.hypot(x, z)).toBeLessThanOrEqual(10.001);
-    expect(x).toBeGreaterThan(1);
+    // Heading north-east into the north edge: the player slides east along it.
+    run(seconds(1), { ...still, forward: 1, right: 1 });
+    expect(walker.position()[2]).toBeCloseTo(-10, 1);
+    expect(walker.position()[0]).toBeGreaterThan(2);
+    // In the corner there is nowhere left to go.
+    run(seconds(5), { ...still, forward: 1, right: 1 });
+    expect(walker.position()[0]).toBeCloseTo(10, 1);
+    expect(walker.position()[2]).toBeCloseTo(-10, 1);
+    // Without bounds the player walks on.
+    walker.setBounds(undefined);
+    run(seconds(1), north);
+    expect(walker.position()[2]).toBeLessThan(-12);
   });
 
   it("moves the same distance whatever the frame rate", () => {

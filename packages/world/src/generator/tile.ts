@@ -1,18 +1,22 @@
-// Builds one tile: stored features (lat/lon) -> decisions -> local metres -> plain mesh data
-// and model placements. The same tile, region, rules and catalog always give the same output.
+// Builds one tile: stored features (lat/lon) -> decisions -> local metres -> plain mesh data,
+// model placements and collider shapes. The same tile, region, rules and catalog always give
+// the same output.
 
 import type { AssetSelector } from "../assets/select.ts";
 import { fromMercator, project } from "../data/project.ts";
-import { tileBounds, tileKey } from "../data/tiles.ts";
+import { type LatLonBox, tileBounds, tileKey, tileReach } from "../data/tiles.ts";
 import { decideArea, decideBuilding, decideObject, decideRoad } from "../decide/decisions.ts";
 import type { RuleEngine } from "../decide/engine.ts";
 import { FactFinder } from "../decide/facts.ts";
 import type {
   Collider,
   ColorName,
+  FeatureId,
+  GeoFeature,
   GroundGrid,
   LatLon,
   MeshData,
+  ObjectDecision,
   Placement,
   Region,
   RoadPath,
@@ -20,12 +24,17 @@ import type {
   Vec2,
   WorldTile,
 } from "../types.ts";
+import { centroid, type Pair } from "../util/geometry.ts";
+import { boxShape, pointInShape } from "../util/shapes.ts";
 import { addBuilding } from "./buildings.ts";
 import { buildingColliders, groundCollider, placementColliders } from "./colliders.ts";
 import { addArea, addGround } from "./ground.ts";
 import { MeshSet } from "./mesh.ts";
-import { type MappedObject, placeAssets, type RoadShape, type ScatterArea } from "./placements.ts";
-import { addRoad } from "./roads.ts";
+import { addStalls, type ParkingLot } from "./parking.ts";
+import { type MappedObject, placeAssets, type ScatterArea } from "./placements.ts";
+import { addStreets, CURB_HEIGHT_M, planStreets, type RoadPiece } from "./roads.ts";
+import { addSidewalks, type TileBox } from "./sidewalks.ts";
+import { placeSigns, type SignBuilding, type SignRequest } from "./signs.ts";
 
 /** Land the map says nothing about. Most of it is grass in the places the game is made for. */
 export const GROUND_COLOUR: ColorName = "grass";
@@ -36,7 +45,10 @@ export type TileMeshes = {
   key: string;
   /** One mesh per material; a material is a palette colour name. */
   meshes: MeshData[];
-  /** Where pre-made models go (asset ids from the catalog). Empty when no catalog was given. */
+  /**
+   * Where pre-made models go (asset ids from the catalog), shop signs with their names
+   * included. Empty when no catalog was given.
+   */
   placements: Placement[];
   /** Solid shapes for the physics: buildings, tree trunks, props. */
   colliders: Collider[];
@@ -49,9 +61,19 @@ export type TileMeshes = {
     roads: number;
     areas: number;
     placements: number;
+    /** Shop name signs (they are also counted in `placements`). */
+    signs: number;
     triangles: number;
   };
 };
+
+type Road = Extract<GeoFeature, { kind: "road" }>;
+type Building = Extract<GeoFeature, { kind: "building" }>;
+
+/** True if the point sits exactly on an edge of the box: the mark of a cut made there. */
+function onEdge(p: LatLon, box: LatLonBox): boolean {
+  return p.lat === box.south || p.lat === box.north || p.lon === box.west || p.lon === box.east;
+}
 
 /**
  * Builds one tile. With a `selector` (made from the asset catalog) it also places models;
@@ -65,24 +87,66 @@ export function buildTile(
 ): TileMeshes {
   const meshes = new MeshSet();
   const local = (p: LatLon): Vec2 => project(region, p);
-  const box = tileBounds(tile.id);
+  const bounds = tileBounds(tile.id);
+  const reach = tileReach(tile.id);
   const corners: [Vec2, Vec2, Vec2, Vec2] = [
-    local({ lat: box.north, lon: box.west }),
-    local({ lat: box.north, lon: box.east }),
-    local({ lat: box.south, lon: box.east }),
-    local({ lat: box.south, lon: box.west }),
+    local({ lat: bounds.north, lon: bounds.west }),
+    local({ lat: bounds.north, lon: bounds.east }),
+    local({ lat: bounds.south, lon: bounds.east }),
+    local({ lat: bounds.south, lon: bounds.west }),
   ];
   addGround(meshes, corners, GROUND_COLOUR);
+  const box: TileBox = {
+    minX: Math.min(corners[0][0], corners[3][0]),
+    maxX: Math.max(corners[1][0], corners[2][0]),
+    minZ: Math.min(corners[0][1], corners[1][1]),
+    maxZ: Math.max(corners[2][1], corners[3][1]),
+  };
+  const tileShape = boxShape(box.minX, box.minZ, box.maxX, box.maxZ);
+
+  // Streets are shaped from every road piece in and around the tile, so they line up with
+  // the neighbouring tiles; a tile stored without its surroundings uses its own roads.
+  const own = tile.features.filter((feature): feature is Road => feature.kind === "road");
+  const pieces: RoadPiece[] = [];
+  for (const road of tile.context?.roads ?? own) {
+    const decision = decideRoad(engine, road);
+    const first = road.line[0];
+    const last = road.line[road.line.length - 1];
+    if (!decision || !first || !last) continue;
+    pieces.push({
+      decision,
+      line: road.line.map(local),
+      offsetM: road.offsetM ?? 0,
+      cutStart: onEdge(first, reach) || onEdge(first, bounds),
+      cutEnd: onEdge(last, reach) || onEdge(last, bounds),
+    });
+  }
+  const plan = planStreets(pieces);
+  addStreets(meshes, plan, tileShape);
+  addSidewalks(meshes, plan, pieces, tileShape, box);
 
   const facts = new FactFinder(tile.features);
   let buildings = 0;
-  let roads = 0;
   const areas: ScatterArea[] = [];
-  const roadShapes: RoadShape[] = [];
-  // Every building outline that touches the tile, including neighbours' buildings that reach in.
-  const outlines: Vec2[][] = (tile.blockers ?? []).map((ring) => ring.map(local));
+  const lots: ParkingLot[] = [];
+  const streets: RoadPath[] = [];
   const objects: MappedObject[] = [];
+  const signRequests: SignRequest[] = [];
+  const signBuildings: SignBuilding[] = [];
   const colliders: Collider[] = [];
+  const wantSign = (id: FeatureId, at: Vec2, decision: ObjectDecision, owned: boolean) => {
+    if (decision.place !== "wall" || !decision.text) return;
+    const request: SignRequest = { id, at, text: decision.text, asset: decision.asset, owned };
+    if (decision.colour) request.colour = decision.colour;
+    signRequests.push(request);
+  };
+  // A building that carries a shop's tags itself gets a sign too, as if the shop were a point at its centre.
+  const noteBuilding = (feature: Building, footprint: Vec2[], heightM: number, owned: boolean) => {
+    signBuildings.push({ id: feature.id, footprint, heightM });
+    const decision = decideObject(engine, feature);
+    if (decision) wantSign(feature.id, centroid(footprint as Pair[]), decision, owned);
+  };
+
   for (const feature of tile.features) {
     if (feature.kind === "area") {
       const decision = decideArea(engine, feature);
@@ -91,47 +155,77 @@ export function buildTile(
       const holes = (feature.holes ?? []).map((hole) => hole.map(local));
       if (addArea(meshes, outline, holes, decision.layer, decision.surface) > 0) {
         areas.push({ decision, outline, holes });
+        if (decision.markings === "stalls") {
+          const whole = !feature.outline.some((p) => onEdge(p, bounds));
+          lots.push({ outline, holes, whole });
+        }
       }
     } else if (feature.kind === "building") {
       const decision = decideBuilding(engine, feature, facts.forBuilding(feature));
       const footprint = feature.footprint.map(local);
-      outlines.push(footprint);
+      noteBuilding(feature, footprint, decision.heightM, true);
       if (addBuilding(meshes, footprint, decision)) {
         buildings++;
         colliders.push(...buildingColliders(footprint, decision.heightM));
       }
     } else if (feature.kind === "road") {
       const decision = decideRoad(engine, feature);
-      if (!decision) continue;
-      const line = feature.line.map(local);
-      addRoad(meshes, line, decision);
-      roadShapes.push({ decision, line });
-      roads++;
+      if (decision && decision.kind !== "path") {
+        streets.push({ line: feature.line.map(local), widthM: decision.widthM });
+      }
     } else {
       const decision = decideObject(engine, feature);
-      if (decision) objects.push({ decision, at: local(feature.at) });
+      if (!decision) continue;
+      const at = local(feature.at);
+      if (decision.place === "point") objects.push({ decision, at });
+      else wantSign(feature.id, at, decision, true);
     }
   }
+  // Neighbours' buildings that reach in: trees keep out of them, and a shop in this tile may
+  // hang its sign on one.
+  for (const feature of tile.context?.buildings ?? []) {
+    const decision = decideBuilding(engine, feature, facts.forBuilding(feature));
+    noteBuilding(feature, feature.footprint.map(local), decision.heightM, false);
+  }
+  // Neighbours' shops close by: they hang their own signs, but may want the same spot as ours.
+  for (const feature of tile.context?.points ?? []) {
+    const decision = decideObject(engine, feature);
+    if (decision) wantSign(feature.id, local(feature.at), decision, false);
+  }
 
-  const placements = selector
-    ? placeAssets(
-        {
-          id: tile.id,
-          toLocal: (m) => fromMercator(region, m),
-          scale: region.k,
-          areas,
-          roads: roadShapes,
-          buildings: outlines,
-          objects,
-        },
-        selector,
-      )
-    : [];
+  addStalls(meshes, lots, pieces, plan.driving, tileShape);
 
-  if (selector) colliders.push(...placementColliders(placements, selector));
-  const streets: RoadPath[] = roadShapes
-    .filter((road) => road.decision.kind !== "path")
-    .map((road) => ({ line: road.line, widthM: road.decision.widthM }));
+  let placements: Placement[] = [];
+  let signs = 0;
+  if (selector) {
+    const placed = placeAssets(
+      {
+        id: tile.id,
+        toLocal: (m) => fromMercator(region, m),
+        scale: region.k,
+        areas,
+        roads: pieces,
+        buildings: signBuildings.map((building) => building.footprint),
+        objects,
+      },
+      selector,
+    );
+    // Whatever stands on a curb or a sidewalk stands on top of it, not sunk into it.
+    for (const placement of placed) {
+      if (pointInShape([placement.pos[0], placement.pos[2]], plan.raised)) {
+        placement.pos[1] += CURB_HEIGHT_M;
+      }
+    }
+    const boards = placeSigns(
+      signRequests,
+      signBuildings,
+      { roads: pieces, lots: lots.map((lot) => lot.outline) },
+      selector,
+    );
+    signs = boards.length;
+    placements = [...placed, ...boards];
+    colliders.push(...placementColliders(placed, selector));
+  }
 
   const data = meshes.toMeshData();
   const triangles = data.reduce((sum, mesh) => sum + mesh.indices.length / 3, 0);
@@ -145,9 +239,10 @@ export function buildTile(
     roads: streets,
     counts: {
       buildings,
-      roads,
+      roads: own.length,
       areas: areas.length,
       placements: placements.length,
+      signs,
       triangles,
     },
   };

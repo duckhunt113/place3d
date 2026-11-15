@@ -60,9 +60,16 @@ Tags we care about most:
 - Identify the app. Browsers can't set `User-Agent`, so the game relies on the `Referer` the browser sends; scripts and the server set a `User-Agent` naming the app.
 - The public servers are volunteer-run and sometimes slow or down. Fine for development; at launch, switch to pre-built tiles.
 
+### Being fair to the public server
+
+- Tiles fetched from Overpass are kept on the device for 30 days (the tile cache), so a place is asked for once, not on every visit.
+- Two tiles are fetched at a time, never more.
+- A tile that fails is tried again after 5, 20 and 60 seconds, then left as plain ground.
+- To use another Overpass server (a self-hosted one, or a mirror), set `VITE_OVERPASS_URL` to its `/api/interpreter` address when starting or building the web app.
+
 ### What one tile query asks for
 
-One query per zoom-17 tile, built by `overpassQuery` in `packages/world/src/data/sources/overpass.ts` (the only place the query text lives; `pnpm fixtures` uses the same function). It uses the tile's box and `out geom`, so everything that touches the tile comes back with its full shape:
+One query per zoom-17 tile, built by `tileQuery` in `packages/world/src/data/sources/overpass.ts` (the only place the query text lives; `pnpm fixtures` uses the same function). It uses the tile's box **plus a 30 m margin** (`TILE_MARGIN_M`) and `out geom`, so everything that touches the tile or its margin comes back with its full shape. The margin is there because a road just outside a tile still puts its sidewalk inside it; without it, sidewalks would stop dead at some tile edges.
 
 - ways: `highway`, `building`, `landuse`, `leisure`, `amenity=parking`, `barrier=hedge`, and `natural` = water, wood, scrub, sand, beach or tree_row
 - relations: `building` multipolygons only (big water and forest relations wait for clipped fetching, roadmap item 2.2)
@@ -82,7 +89,7 @@ The game always asks the `TileSource` for "tile X"; only the supplier behind it 
 4. **Launch (whole world):**
    - **Builder:** one server holds the OSM planet data in a queryable form (self-hosted Overpass, or PostGIS loaded from the planet file) and is kept fresh with OSM's change files. It reads Overture's building files the same way (pulled per area, or a copy kept on its disk if that proves too slow; the worldwide set is hundreds of GB). It only builds tiles that don't exist yet; players never query it directly, and its load grows with new places visited, not with players.
    - **Pre-built tiles:** popular regions are built up front (from Geofabrik extracts or the planet); everywhere else is built on first request and stored from then on.
-   - **Storage + CDN:** tiles live as files or PMTiles in object storage (e.g. Cloudflare R2) behind a CDN, under versioned paths (`tiles/v2/…`) so a format change can roll out without breaking old clients.
+   - **Storage + CDN:** tiles live as files or PMTiles in object storage (e.g. Cloudflare R2) behind a CDN, under versioned paths (`tiles/v3/…`) so a format change can roll out without breaking old clients.
    - **Freshness:** rebuild tiles whose OSM data changed, weekly; pick up Overture's monthly release when it comes out.
 
 Never put Overpass or any live query service in front of players. Switch from step 3 to step 4 when daily cache misses approach Overpass's fair-use limits.

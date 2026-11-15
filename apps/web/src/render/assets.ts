@@ -10,14 +10,21 @@ import type { PaletteColours } from "./meshes.ts";
 
 /** Models name their materials "pal:<palette colour>" (CLAUDE.md, asset conventions). */
 const PALETTE_PREFIX = "pal:";
-/** The face of a sign board, where shop names are drawn later. Plain cream until then. */
+/** The face of a sign board, where a shop's name goes (signs.ts). Plain cream underneath. */
 const SIGN_FACE = "sign:face";
 const SIGN_FACE_COLOUR = "cream";
+
+/** Where a model's text face is, in the model's own metres: a flat rectangle facing +z. */
+export type TextFace = { minX: number; maxX: number; minY: number; maxY: number; z: number };
+
+/** Blender adds ".001" to repeated material names; the real name is the part before it. */
+const nameOf = (material: THREE.Material): string => material.name.replace(/\.\d{3}$/, "");
 
 export class AssetLibrary {
   readonly #files = new Map<AssetId, string>();
   readonly #loading = new Map<AssetId, Promise<THREE.BufferGeometry>>();
   readonly #ready = new Map<AssetId, THREE.BufferGeometry>();
+  readonly #textFaces = new Map<AssetId, TextFace>();
   readonly #loader = new GLTFLoader();
   readonly #colours: PaletteColours;
   readonly #baseUrl: string;
@@ -31,6 +38,11 @@ export class AssetLibrary {
   /** The geometry of a model that has finished loading. */
   get(id: AssetId): THREE.BufferGeometry | undefined {
     return this.#ready.get(id);
+  }
+
+  /** The text face of a loaded model, if it has one (sign boards do). */
+  textFace(id: AssetId): TextFace | undefined {
+    return this.#textFaces.get(id);
   }
 
   /** Loads the given models (each file only once). Models that fail are reported and skipped. */
@@ -53,7 +65,7 @@ export class AssetLibrary {
       pending = file
         ? this.#loader
             .loadAsync(`${this.#baseUrl}${file}`)
-            .then((gltf) => this.#flatten(gltf.scene))
+            .then((gltf) => this.#flatten(id, gltf.scene))
         : Promise.reject(new Error("not in catalog.json"));
       this.#loading.set(id, pending);
     }
@@ -61,8 +73,7 @@ export class AssetLibrary {
   }
 
   #colourOf(material: THREE.Material): THREE.Color {
-    // Blender adds ".001" to repeated names; the palette name is the part before it.
-    const name = material.name.replace(/\.\d{3}$/, "");
+    const name = nameOf(material);
     if (name === SIGN_FACE) return this.#colours.get(SIGN_FACE_COLOUR);
     if (name.startsWith(PALETTE_PREFIX)) {
       const colour = name.slice(PALETTE_PREFIX.length);
@@ -73,7 +84,7 @@ export class AssetLibrary {
     return own instanceof THREE.Color ? own : new THREE.Color(0xff00ff);
   }
 
-  #flatten(root: THREE.Object3D): THREE.BufferGeometry {
+  #flatten(id: AssetId, root: THREE.Object3D): THREE.BufferGeometry {
     root.updateMatrixWorld(true);
     const parts: THREE.BufferGeometry[] = [];
     root.traverse((object) => {
@@ -83,6 +94,19 @@ export class AssetLibrary {
       const flat = source.index ? source.toNonIndexed() : source.clone();
       flat.applyMatrix4(object.matrixWorld);
       if (!flat.getAttribute("normal")) flat.computeVertexNormals();
+      if (nameOf(material) === SIGN_FACE) {
+        flat.computeBoundingBox();
+        const box = flat.boundingBox;
+        if (box) {
+          this.#textFaces.set(id, {
+            minX: box.min.x,
+            maxX: box.max.x,
+            minY: box.min.y,
+            maxY: box.max.y,
+            z: box.max.z,
+          });
+        }
+      }
       const count = flat.getAttribute("position").count;
       const colour = this.#colourOf(material);
       const tints = new Float32Array(count * 3);

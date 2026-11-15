@@ -2,7 +2,7 @@
 
 The build plan for the MVP (v0.1), in the order to build it. What the MVP includes is in [02-mvp.md](02-mvp.md); what comes after it is in [12-roadmap.md](12-roadmap.md).
 
-**Next up:** 4.1 Curbs and sidewalks.
+**Next up:** nothing is left to build. Two things are yours to do: 6.5 (walk to the plaza yourself) and 6.6 (tag the commit).
 
 How to use this file:
 
@@ -13,15 +13,15 @@ How to use this file:
 
 ## Overview
 
-| Step | Result                                               | Status      |
-| ---- | ---------------------------------------------------- | ----------- |
-| 0    | Foundations: workspace, rules, art, models           | Done        |
-| 1    | Coordinates in → grey roads and building boxes       | Done        |
-| 2    | Style pass: colours, ground, trees, sky, shadows     | Done        |
-| 3    | Walking: first-person controls and collisions        | Done        |
-| 4    | Details: sidewalks, curbs, parking lines, shop signs | Not started |
-| 5    | Saved tile cache: revisited areas load instantly     | Not started |
-| 6    | Finish line: checks and the "done when" walk         | Not started |
+| Step | Result                                               | Status |
+| ---- | ---------------------------------------------------- | ------ |
+| 0    | Foundations: workspace, rules, art, models           | Done   |
+| 1    | Coordinates in → grey roads and building boxes       | Done   |
+| 2    | Style pass: colours, ground, trees, sky, shadows     | Done   |
+| 3    | Walking: first-person controls and collisions        | Done   |
+| 4    | Details: sidewalks, curbs, parking lines, shop signs | Done   |
+| 5    | Saved tile cache: revisited areas load instantly     | Done   |
+| 6    | Finish line: checks and the "done when" walk         | Done   |
 
 ## Step 0 — Foundations (done)
 
@@ -96,11 +96,13 @@ Left for later, by choice: house walls stay blank (no painted windows or doors).
 
 Goal: the details that make the place recognisable up close.
 
-- [ ] 4.1 Curbs and sidewalks: `generator/sidewalks.ts`. 15 cm curbs and sidewalk strips with panel joints, where the road rules say so. Replace step 1's overlapping road joins with clean intersections here
-- [ ] 4.2 Road markings: centre lines on main roads, slightly above the road surface
-- [ ] 4.3 Parking: `generator/parking.ts` paints stall lines inside parking areas
-- [ ] 4.4 Shop signs: one sign board per shop found inside a retail building, on the wall facing the road or parking; `render/signs.ts` draws the shop's name on the `sign:face` material in our own font (names only, no logos)
-- [ ] 4.5 Small details (optional): grass tufts and flower patches along curbs and in lawns
+- [x] 4.1 Curbs and sidewalks: `generator/roads.ts` works out all streets of a tile together as flat shapes (clean junctions, no overlapping pieces); `generator/sidewalks.ts` raises 15 cm curbs and sidewalk strips with panel joints, where the road rules say so. Tiles now fetch a 30 m margin around themselves and keep it as `context`, so curbs and sidewalks line up across tile edges
+- [x] 4.2 Road markings: centre lines on main roads, slightly above the road surface, with a gap at junctions
+- [x] 4.3 Parking: `generator/parking.ts` paints stall lines along parking aisles, and along the long sides of small lots with no mapped aisle
+- [x] 4.4 Shop signs: one sign board per named shop, on the wall of its building that faces the parking lot or the street (`generator/signs.ts`); `render/signs.ts` draws the shop's name on the board's `sign:face` in our own font (names only, no logos)
+- [ ] 4.5 Small details (optional, left for later): grass tufts and flower patches along curbs and in lawns
+
+Left for later, by choice: curbs you can bump into (the walking ground is still flat), rounded street corners, crosswalks and stop lines.
 
 **Done when:** at the Lorne Park plaza you can read the shop names from across the parking lot, the lot has stalls, and the streets have curbs and sidewalks.
 
@@ -108,21 +110,21 @@ Goal: the details that make the place recognisable up close.
 
 Goal: an area you've visited loads instantly the next time.
 
-- [ ] 5.1 Storage: `cache/` implements `TileCache` with `idb-keyval`, keyed by tile id and tile version
-- [ ] 5.2 Loading flow: cache first, then the tile source, then save; a request already in flight for a tile is shared, not repeated
-- [ ] 5.3 Loading screen with per-tile progress; a failed tile shows as plain ground and is retried
-- [ ] 5.4 Old tiles: a tile saved with an older version is fetched again
+- [x] 5.1 Storage: `cache/tiles.ts` implements `TileCache` with `idb-keyval`, keyed by tile version and tile id
+- [x] 5.2 Loading flow: `data/loader.ts` in the world package. Tiles that ship with the app first (never cached), then the cache, then the tile source, then save; a request already in flight for a tile is shared, not repeated
+- [x] 5.3 Loading card with per-tile progress; a failed tile shows as plain ground and is retried after 5, 20 and 60 seconds
+- [x] 5.4 Old tiles: a tile saved with an older version is fetched again (and deleted from storage); so is one older than 30 days
 
 **Done when:** reloading the same location makes no map requests (check the browser's Network tab), and a location outside the saved tiles loads through Overpass and is instant on the second visit.
 
 ## Step 6 — Finish line
 
-- [ ] 6.1 Performance: within the budgets in `CLAUDE.md` hard rule 7 (draw calls, triangles, one shadow light, capped pixel ratio)
-- [ ] 6.2 Credit and data rules: the map data credits (OpenStreetMap, Overture Maps) are always visible; nothing uses Google Maps or Street View data
-- [ ] 6.3 Run the `repo-audit` skill and fix what it finds
-- [ ] 6.4 Update the status lines in `CLAUDE.md` and `docs/README.md`
-- [ ] 6.5 **The MVP test:** enter the coordinates for Albertson Crescent, recognise the street and the nearby plaza, and walk to the plaza
-- [ ] 6.6 Tag the commit `v0.1`
+- [x] 6.1 Performance: within the desktop budgets in `CLAUDE.md` hard rule 7. Measured: about 120 draw calls and 0.85 M triangles on foot, 190 and 1.15 M with the whole area in the free view; one shadow light; pixel ratio capped at 2. The counts are shown on screen next to the FPS counter
+- [x] 6.2 Credit and data rules: the map data credits (OpenStreetMap, Overture Maps) are always visible; nothing uses Google Maps or Street View data (a pasted Google Maps link is only read for its coordinates)
+- [x] 6.3 Run the `repo-audit` skill and fix what it finds
+- [x] 6.4 Update the status lines in `CLAUDE.md` and `docs/README.md`
+- [ ] 6.5 **The MVP test** (yours): enter the coordinates for Albertson Crescent, recognise the street and the nearby plaza, and walk to the plaza. The walkable area is now every loaded tile, so the plaza is reachable on foot
+- [ ] 6.6 Tag the commit `v0.1` (yours): `git tag v0.1` after committing
 
 ## Not in this roadmap
 
