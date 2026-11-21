@@ -4,9 +4,6 @@ A browser game that rebuilds a real place as a bright, stylized 3D world you can
 Type in coordinates and the streets, houses, shops and trees around that point appear, built
 from open map data.
 
-**Status:** the MVP (v0.1) is built. It is made for one area so far: Albertson Crescent and
-the Lorne Park plaza in Mississauga, Ontario.
-
 ## Run it
 
 You need Node.js 22.6 or newer and pnpm.
